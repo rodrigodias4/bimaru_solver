@@ -3,6 +3,7 @@
 
 import sys
 from sys import stdin, stdout
+import numpy as np
 from search import (
     Problem,
     Node,
@@ -13,7 +14,8 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
-import numpy as np
+
+Action = (int, int, int, int)
 
 HORIZONTAL = 1
 VERTICAL = 0
@@ -30,8 +32,7 @@ A_DIR = 3
 def hv(x: int) -> str:
     if x:
         return "H"
-    else:
-        return "V"
+    return "V"
 
 
 class Board:
@@ -59,7 +60,7 @@ class Board:
         if not Board.within_bounds(r, c):
             return False
         v = self.get_value(r, c)
-        return v == "." or v == "W"
+        return v in {".", "W"}
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
@@ -88,6 +89,7 @@ class Board:
         return (left, right)
 
     def is_water_or_oob(self, r: int, c: int):
+        """Verifica se a célula é água ou está fora dos limites"""
         if not Board.within_bounds(r, c):
             return True
         else:
@@ -97,11 +99,13 @@ class Board:
                 return False
 
     def water_if_empty(self, r: int, c: int):
+        """Coloca água na célula se esta estiver vazia"""
         if Board.within_bounds(r, c):
             if self.grid[r, c] == "":
                 self.grid[r, c] = "."
 
     def set_if_empty_and_within_bounds(self, r: int, c: int, value: str):
+        """Coloca o valor indicado na célula se esta estiver vazia"""
         if Board.within_bounds(r, c):
             if self.get_value(r, c) == "":
                 self.grid[r, c] = value
@@ -120,82 +124,82 @@ class Board:
                         self.water_if_empty(r, c - 1)
                 if self.get_value(r, c).lower() == "t":
                     if self.is_water_or_oob(r + 2, c):
-                        """CONTRATORPEDEIRO (2 CELULAS)"""
+                        # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty_and_within_bounds(r + 1, c, "b")
                     elif self.get_value(r + 2, c).lower() == "b":
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r + 1, c, "m")
                     elif self.get_value(
                         r + 1, c
                     ).lower() == "m" and self.is_water_or_oob(r + 3, c):
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r + 2, c, "b")
                         self.water_bottom(r + 2, c)
                     elif self.get_value(
                         r + 2, c
                     ).lower() == "m" and self.is_water_or_oob(r + 4, c):
-                        """COURAÇADO (4 CELULAS)"""
+                        # COURAÇADO (4 CELULAS)
                         self.set_if_empty_and_within_bounds(r + 3, c, "b")
                         self.set_if_empty_and_within_bounds(r + 1, c, "m")
                         self.water_bottom(r + 3, c)
                 elif self.get_value(r, c).lower() == "b":
                     if self.is_water_or_oob(r - 2, c):
-                        """CONTRATORPEDEIRO (2 CELULAS)"""
+                        # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 1, c, "t")
                     elif self.get_value(r - 2, c).lower() == "t":
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 1, c, "m")
                     elif self.get_value(
                         r - 1, c
                     ).lower() == "m" and self.is_water_or_oob(r - 3, c):
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 2, c, "t")
                         self.water_top(r - 2, c)
                     elif self.get_value(
                         r - 2, c
                     ).lower() == "m" and self.is_water_or_oob(r - 4, c):
-                        """COURAÇADO (4 CELULAS)"""
+                        # COURAÇADO (4 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 3, c, "t")
                         self.set_if_empty_and_within_bounds(r - 1, c, "m")
                         self.water_top(r - 3, c)
                 elif self.get_value(r, c).lower() == "l":
                     if self.is_water_or_oob(r, c + 2):
-                        """CONTRATORPEDEIRO (2 CELULAS)"""
+                        # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c + 1, "r")
                     elif self.get_value(r, c + 2).lower() == "b":
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c + 1, "m")
                     elif self.get_value(
                         r, c + 1
                     ).lower() == "m" and self.is_water_or_oob(r, c + 3):
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c + 2, "r")
                         self.water_right(r, c + 2)
                     elif self.get_value(
                         r, c + 2
                     ).lower() == "m" and self.is_water_or_oob(r, c + 4):
-                        """COURAÇADO (4 CELULAS)"""
+                        # COURAÇADO (4 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c + 3, "r")
                         self.set_if_empty_and_within_bounds(r, c + 1, "m")
                         self.water_right(r, c + 3)
 
                 elif self.get_value(r, c).lower() == "r":
                     if self.is_water_or_oob(r, c - 2):
-                        """CONTRATORPEDEIRO (2 CELULAS)"""
+                        # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c - 1, "l")
                     elif self.get_value(r, c - 2).lower() == "r":
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c - 1, "m")
                     elif self.get_value(
                         r, c - 1
                     ).lower() == "m" and self.is_water_or_oob(r, c - 3):
-                        """CRUZADOR (3 CELULAS)"""
+                        # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c - 2, "l")
                         self.water_left(r, c - 2)
                     elif self.get_value(
                         r, c - 2
                     ).lower() == "m" and self.is_water_or_oob(r, c - 4):
-                        """COURAÇADO (4 CELULAS)"""
+                        # COURAÇADO (4 CELULAS)
                         self.set_if_empty_and_within_bounds(r, c - 3, "l")
                         self.set_if_empty_and_within_bounds(r, c - 1, "m")
                         self.water_left(r, c - 3)
@@ -219,17 +223,6 @@ class Board:
             sys.exit("Tabuleiro inicial inválido")
         else:
             return initial_board
-
-        """Lê o test do standard input (stdin) que é passado como argumento
-        e retorna uma instância da classe Board.
-
-        Por exemplo:
-            $ python3 bimaru.py < input_T01
-
-            > from sys import stdin
-            > line = stdin.readline().split()
-        """
-        # TODO
 
     @staticmethod
     def within_bounds(r: int, c: int):
@@ -259,25 +252,25 @@ class Board:
                 v = self.get_value(r, c).lower()
                 if v == "t":
                     temp = self.get_value(r + 1, c).lower()
-                    if temp != "m" and temp != "b":
+                    if temp not in {"m", "b"}:
                         if DEBUG_LEVEL == D_VERBOSE:
                             print(f"t {r} {c}")
                         return False
                 elif v == "b":
                     temp = self.get_value(r - 1, c).lower()
-                    if temp != "m" and temp != "t":
+                    if temp not in {"m", "t"}:
                         if DEBUG_LEVEL == D_VERBOSE:
                             print(f"b {r} {c} {temp}")
                         return False
                 elif v == "l":
                     temp = self.get_value(r, c + 1).lower()
-                    if temp != "m" and temp != "r":
+                    if temp not in {"m", "r"}:
                         if DEBUG_LEVEL == D_VERBOSE:
                             print(f"l {r} {c}")
                         return False
                 elif v == "r":
                     temp = self.get_value(r, c - 1).lower()
-                    if temp != "m" and temp != "l":
+                    if temp not in {"m", "l"}:
                         if DEBUG_LEVEL == D_VERBOSE:
                             print(f"r {r} {c}")
                         return False
@@ -327,13 +320,13 @@ class Board:
                         or (r == 9 and c == 0)
                         or (r == 9 and c == 9)
                     ) and self.get_value(r, c).lower() == "m":
-                        """M no canto não é uma posição válida"""
+                        # M no canto não é uma posição válida
                         if DEBUG_LEVEL >= D_VERBOSE:
                             print("M no canto")
                         return False
 
-                    if not (self.check_diagonals(r, c)):
-                        """Diagonais"""
+                    if not self.check_diagonals(r, c):
+                        # Diagonais
                         if DEBUG_LEVEL >= D_VERBOSE:
                             print("Diagonals in ", r, c)
                             return False
@@ -350,7 +343,7 @@ class Board:
                         return False
 
                     if (
-                        (v == "t" or v == "b")
+                        (v in {"t", "b"})
                         and (
                             self.ship_in_cell_value(
                                 self.adjacent_horizontal_values(r, c)[0]
@@ -360,7 +353,7 @@ class Board:
                             )
                         )
                     ) or (
-                        (v == "l" or v == "r")
+                        (v in {"l", "r"})
                         and (
                             self.ship_in_cell_value(
                                 self.adjacent_vertical_values(r, c)[0]
@@ -515,11 +508,11 @@ class Board:
         if not Board.within_bounds(r, c):
             return False
         temp = self.get_value(r, c)
-        return temp != "" and temp != "." and temp != "None" and temp != "W"
+        return temp not in {"", ".", "None", "W"}
 
     @staticmethod
     def ship_in_cell_value(v: str) -> bool:
-        return v != "" and v != "." and v != "None" and v != "W"
+        return v not in {"", ".", "None", "W"}
 
     def perpendicular_intersection(self, r, c) -> bool:
         if self.ship_in_cell(r, c):
@@ -544,7 +537,7 @@ class Board:
 
     def ship_hint_in_cell(self, r, c) -> bool:
         cell = self.get_value(r, c).lower()
-        return cell == "t" or cell == "l" or cell == "r" or cell == "b" or cell == "m"
+        return cell in {"t", "l", "r", "b", "m"}
 
     def cells_existing_in_new_ship(self, r, c, size, direction) -> int:
         count = 0
@@ -598,7 +591,7 @@ class Board:
                     if cell.lower() == "c" and i > 0:
                         return False
 
-                    if not (self.check_diagonals(r, c + i)):
+                    if not self.check_diagonals(r, c + i):
                         Board.debug_action_checks(
                             r, c, size, direction, "Diagonais contêm navio"
                         )
@@ -688,7 +681,7 @@ class Board:
                     if cell.lower() == "c" and i > 0:
                         return False
 
-                    if not (self.check_diagonals(r + i, c)):
+                    if not self.check_diagonals(r + i, c):
                         Board.debug_action_checks(
                             r, c, size, direction, "Diagonais contêm navio"
                         )
@@ -788,7 +781,7 @@ class BimaruState:
         return self.id < other.id
 
     def __eq__(self, other):
-        return str(self.board.grid) == str(other.board.grid)
+        return np.array_equal(self.board.grid, other.board.grid)
 
     def __hash__(self):
         return hash(str(self.board.grid))
@@ -803,9 +796,9 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         if not state.board.valid_board():
-            return []
+            return np.empty(0, Action)
+
         a = []
-        b = []
         s = -1
 
         for i in reversed(range(1, 5)):
@@ -813,7 +806,7 @@ class Bimaru(Problem):
                 s = i
                 break
         if s == -1:
-            return a
+            return []
 
         for r in range(10):
             for c in range(10):
@@ -827,32 +820,31 @@ class Bimaru(Problem):
                         break
 
         n_actions = len(a)
-
         if state.board.ships[s - 1] + n_actions < 5 - s:
-            """Ações insuficientes para completar os navios necessários"""
+            # Ações insuficientes para completar os navios necessários
             return []
         elif state.board.ships[s - 1] + n_actions == 5 - s:
-            """As ações têm de ser mutuamente compatíveis, pelo que só
-            vale a pena seguir um ramo (se forem, aparecerão no filho)"""
+            # As ações têm de ser mutuamente compatíveis, pelo que só
+            # vale a pena seguir um ramo (se forem, aparecerão no filho)
             return [a[0]]
 
         return a
 
-    def result(self, state: BimaruState, action: list) -> BimaruState:
+    def result(self, state: BimaruState, action: Action) -> BimaruState:
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
 
-        buf: str = ""
         new_board = Board(
-            np.matrix(state.board.grid),
-            np.array(state.board.ships),
-            np.array(state.board.count_row),
-            np.array(state.board.count_column),
+            np.array(state.board.grid, str),
+            np.array(state.board.ships, int),
+            np.array(state.board.count_row, int),
+            np.array(state.board.count_column, int),
         )
         new_state = BimaruState(new_board)
         if DEBUG_LEVEL >= D_MINIMUM:
+            buf: str = ""
             buf += "―" * 90 + "\n"
             buf += f"from state {state.id} with {action}\n"
 
@@ -938,7 +930,7 @@ def main():
 
     # bimaru.debug_loop()
 
-    if goal_node == None:
+    if goal_node is None:
         print("No final state.")
         return
     goal_node.state.board.water_all_empty()
@@ -951,9 +943,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # TODO:
-    # Ler o ficheiro do standard input,
-    # Usar uma técnica de procura para resolver a instância,
-    # Retirar a solução a partir do nó resultante,
-    # Imprimir para o standard output no formato indicado.
-    pass
