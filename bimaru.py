@@ -20,7 +20,7 @@ VERTICAL = 0
 D_NONE = 0
 D_MINIMUM = 1
 D_VERBOSE = 2
-DEBUG_LEVEL = D_MINIMUM
+DEBUG_LEVEL = D_NONE
 A_ROW = 0
 A_COL = 1
 A_SIZE = 2
@@ -40,9 +40,9 @@ class Board:
     def __init__(
         self,
         grid: np.ndarray,
-        ships,
-        count_row,
-        count_column,
+        ships: np.ndarray,
+        count_row: np.ndarray,
+        count_column: np.ndarray,
     ):
         self.grid = grid
         self.count_row = count_row
@@ -203,8 +203,9 @@ class Board:
     @staticmethod
     def parse_instance():
         initial_grid = np.empty([10, 10], str)
-        count_row = [int(x) for x in stdin.readline().rstrip("\n").split("\t")[1:]]
-        count_column = [int(x) for x in stdin.readline().rstrip("\n").split("\t")[1:]]
+        count_row = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
+        count_column = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
+        print(count_row, count_column)
 
         n_hints = int(stdin.readline().rstrip("\n"))
 
@@ -212,7 +213,7 @@ class Board:
             line = stdin.readline().rstrip("\n").split("\t")[1:]
             initial_grid[int(line[0]), int(line[1])] = line[2]
 
-        initial_board = Board(initial_grid, [0, 0, 0, 0], count_row, count_column)
+        initial_board = Board(initial_grid, np.zeros(4, int), count_row, count_column)
         initial_board.inferences()
         initial_board.ship_count()
         if not initial_board.valid_board():
@@ -787,11 +788,12 @@ class BimaruState:
     def __lt__(self, other):
         return self.id < other.id
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         return str(self.board.grid) == str(other.board.grid)
-    
+
     def __hash__(self):
         return hash(str(self.board.grid))
+
 
 class Bimaru(Problem):
     def __init__(self, board: Board):
@@ -801,7 +803,8 @@ class Bimaru(Problem):
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        if not state.board.valid_board(): return []
+        if not state.board.valid_board():
+            return []
         a = []
         b = []
         s = -1
@@ -834,45 +837,18 @@ class Bimaru(Problem):
             vale a pena seguir um ramo (se forem, aparecerão no filho)"""
             return [a[0]]
 
-        """if (n_actions) > 1:
-            i = 0
-            while i < n_actions-1:
-                j = i + 1
-                child_state = self.ghost_result(state, a[i])
-                b = []
-                for r in range(10):
-                    for c in range(10):
-                        for d in range(2):
-                            if s != 1:
-                                if child_state.board.check_action(r, c, s, d):
-                                    b.append((r, c, s, d))
-                            else:
-                                if child_state.board.check_action(r, c, s, 0):
-                                    b.append((r, c, s, 0))
-                                break
-
-                while j < n_actions:
-                    if a[j] in b:
-                        a.pop(j)
-                        n_actions -= 1
-                    j += 1
-                i += 1"""
-    
         return a
-        #return list(combinations(a, 5 - s - state.board.ships[s-1]))
 
-    def result(self, state: BimaruState, action:list) -> BimaruState:
+    def result(self, state: BimaruState, action: list) -> BimaruState:
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        # print(self.actions(state))
-        # return self.result_combination(state, action)
-        
+
         buf: str = ""
         new_board = Board(
             np.matrix(state.board.grid),
-            list(state.board.ships),
+            np.array(state.board.ships),
             np.array(state.board.count_row),
             np.array(state.board.count_column),
         )
@@ -880,13 +856,11 @@ class Bimaru(Problem):
         if DEBUG_LEVEL >= D_MINIMUM:
             buf += "―" * 90 + "\n"
             buf += f"from state {state.id} with {action}\n"
-        
-        
+
         row = action[A_ROW]
         col = action[A_COL]
         ship_size = action[A_SIZE]
         direction = action[A_DIR]
-        
 
         if ship_size == 1:
             new_state.board.grid[row, col] = "c"
@@ -905,17 +879,17 @@ class Bimaru(Problem):
                 new_state.board.set_if_empty_and_within_bounds(
                     row + i * (1 - direction), col + i * direction, "m"
                 )
-                
+
         new_state.board.water_fill()
         new_state.board.ships[ship_size - 1] += 1
-        
+
         if DEBUG_LEVEL >= D_MINIMUM:
             buf += f"to state {new_state.id} :\n"
             buf += new_state.board.print_debug()
             buf += "ships : " + str(new_state.board.ships) + "\n"
             actions = self.actions(new_state)
             buf += "actions: " + str(actions) + "\n"
-            #buf += "valid: " + str(new_state.board.valid_board())
+            # buf += "valid: " + str(new_state.board.valid_board())
             print(buf)
         return new_state
 
@@ -925,7 +899,7 @@ class Bimaru(Problem):
         estão preenchidas de acordo com as regras do problema."""
         # print(state.id, state.board.valid_board(), state.board.ships)
         return (
-            state.board.ships == [4, 3, 2, 1]
+            np.array_equal(state.board.ships, [4, 3, 2, 1])
             and state.board.valid_board()
             and state.board.pontas_soltas()
         )
@@ -936,127 +910,16 @@ class Bimaru(Problem):
         # return 20 - ship_count[0] * 1 - ship_count[1] * 2 - ship_count[2] * 3 - ship_count[3] * 3
         return 10 - ship_count[0] - ship_count[1] - ship_count[2] - ship_count[3]
 
-    def ghost_result(self, state: BimaruState, action) -> BimaruState:
-        row = action[A_ROW]
-        col = action[A_COL]
-        ship_size = action[A_SIZE]
-        direction = action[A_DIR]
-        new_board = Board(
-            np.matrix(state.board.grid),
-            list(state.board.ships),
-            np.array(state.board.count_row),
-            np.array(state.board.count_column),
-        )
-        new_state = BimaruState(new_board, True)
-
-        if ship_size == 1:
-            new_state.board.grid[row, col] = "c"
-        else:
-            if direction == HORIZONTAL:
-                new_state.board.set_if_empty_and_within_bounds(row, col, "l")
-                new_state.board.set_if_empty_and_within_bounds(
-                    row, col + ship_size - 1, "r"
-                )
-            else:
-                new_state.board.set_if_empty_and_within_bounds(row, col, "t")
-                new_state.board.set_if_empty_and_within_bounds(
-                    row + ship_size - 1, col, "b"
-                )
-            for i in range(1, ship_size - 1):
-                new_state.board.set_if_empty_and_within_bounds(
-                    row + i * (1 - direction), col + i * direction, "m"
-                )
-
-        new_state.board.water_fill()
-        new_state.board.ships[ship_size - 1] += 1
-        return new_state
-    
-    def result_combination(self, state: BimaruState, action):
-        """Retorna o estado resultante de executar a 'action' sobre
-        'state' passado como argumento. A ação a executar deve ser uma
-        das presentes na lista obtida pela execução de
-        self.actions(state)."""
-        # print(self.actions(state))
-        
-        buf: str = ""
-        new_board = Board(
-            np.matrix(state.board.grid),
-            list(state.board.ships),
-            np.array(state.board.count_row),
-            np.array(state.board.count_column),
-        )
-        new_state = BimaruState(new_board)
-        if DEBUG_LEVEL >= D_MINIMUM:
-            buf += "―" * 90 + "\n"
-            buf += f"from state {state.id} with {action}\n"
-        
-        for x in action:
-            row = x[A_ROW]
-            col = x[A_COL]
-            ship_size = x[A_SIZE]
-            direction = x[A_DIR]
-            
-
-            if ship_size == 1:
-                new_state.board.grid[row, col] = "c"
-            else:
-                if direction == HORIZONTAL:
-                    new_state.board.set_if_empty_and_within_bounds(row, col, "l")
-                    new_state.board.set_if_empty_and_within_bounds(
-                        row, col + ship_size - 1, "r"
-                    )
-                else:
-                    new_state.board.set_if_empty_and_within_bounds(row, col, "t")
-                    new_state.board.set_if_empty_and_within_bounds(
-                        row + ship_size - 1, col, "b"
-                    )
-                for i in range(1, ship_size - 1):
-                    new_state.board.set_if_empty_and_within_bounds(
-                        row + i * (1 - direction), col + i * direction, "m"
-                    )
-                    
-            new_state.board.water_fill()
-            new_state.board.ships[ship_size - 1] += 1
-        
-        if DEBUG_LEVEL >= D_MINIMUM:
-            buf += f"to state {new_state.id} :\n"
-            buf += new_state.board.print_debug()
-            buf += "ships : " + str(new_state.board.ships) + "\n"
-            actions = self.actions(new_state)
-            buf += "actions: " + str(actions) + "\n"
-            buf += "valid: " + str(new_state.board.valid_board())
-            #buf += "actions v2: " + str(list(combinations(actions, ship_size - 1 - new_state.board.ships[ship_size-1]))) + "\n"
-            print(buf)
-        return new_state
-    
     def debug_loop(self):
         action = ()
         new_state = self.initial
-        while(1):
+        while 1:
             action = stdin.readline().rstrip("\n").split(" ")[0:]
-            for i in range(4): action[i] = int(action[i])
+            for i in range(4):
+                action[i] = int(action[i])
             print(action)
             new_state = self.result(new_state, action)
-            
-def combinations(iterable, r):
-    # combinations('ABCD', 2) --> AB AC AD BC BD CD
-    # combinations(range(4), 3) --> 012 013 023 123
-    pool = tuple(iterable)
-    n = len(pool)
-    if r > n:
-        return
-    indices = list(range(r))
-    yield tuple(pool[i] for i in indices)
-    while True:
-        for i in reversed(range(r)):
-            if indices[i] != i + n - r:
-                break
-        else:
-            return
-        indices[i] += 1
-        for j in range(i+1, r):
-            indices[j] = indices[j-1] + 1
-        yield tuple(pool[i] for i in indices)
+
 
 def main():
     initial_board = Board.parse_instance()
@@ -1074,8 +937,8 @@ def main():
     # goal_node = astar_search(bimaru,bimaru.h)
     # end = time.perf_counter()
 
-    #bimaru.debug_loop()
-    
+    # bimaru.debug_loop()
+
     if goal_node == None:
         print("No final state.")
         return
@@ -1085,18 +948,6 @@ def main():
         print(goal_node.state.board.print_debug())
     else:
         goal_node.state.board.print()
-
-    c = Board(goal_node.state.board.grid,goal_node.state.board.ships,goal_node.state.board.count_row,goal_node.state.board.count_column)
-    a = BimaruState(c)
-    b = Node(a)
-    """n = goal_node
-    while n.parent != None:
-        n = n.parent
-        n.state.board.print_debug()
-        print(n.action)"""
-    
-    #bimarustate2 = bimaru.result(bimaru.initial, (5, 9, 4, 0))
-    """print("Is goal? ", bimaru.goal_test(bimarustate9))"""
 
 
 if __name__ == "__main__":
