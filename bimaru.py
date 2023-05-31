@@ -122,9 +122,14 @@ class Board:
                         self.water_if_empty(r, c + 1)
                     elif c == 9:
                         self.water_if_empty(r, c - 1)
-                if self.get_value(r, c).lower() == "t":
+                elif self.get_value(r, c).lower() == "t":
                     if self.is_water_or_oob(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty_and_within_bounds(r + 1, c, "b")
+                    elif self.get_value(r + 3, c).lower() == "m":
+                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
+                        self.water_if_empty(r + 2, c)
+                        self.water_if_empty(r + 4, c)
                         self.set_if_empty_and_within_bounds(r + 1, c, "b")
                     elif self.get_value(r + 2, c).lower() == "b":
                         # CRUZADOR (3 CELULAS)
@@ -146,6 +151,11 @@ class Board:
                     if self.is_water_or_oob(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 1, c, "t")
+                    elif self.get_value(r - 3, c).lower() == "m":
+                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
+                        self.water_if_empty(r - 2, c)
+                        self.water_if_empty(r - 4, c)
+                        self.set_if_empty_and_within_bounds(r - 1, c, "t")
                     elif self.get_value(r - 2, c).lower() == "t":
                         # CRUZADOR (3 CELULAS)
                         self.set_if_empty_and_within_bounds(r - 1, c, "m")
@@ -165,6 +175,11 @@ class Board:
                 elif self.get_value(r, c).lower() == "l":
                     if self.is_water_or_oob(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty_and_within_bounds(r, c + 1, "r")
+                    elif self.get_value(r, c + 3).lower() == "m":
+                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
+                        self.water_if_empty(r, c + 2)
+                        self.water_if_empty(r, c + 4)
                         self.set_if_empty_and_within_bounds(r, c + 1, "r")
                     elif self.get_value(r, c + 2).lower() == "b":
                         # CRUZADOR (3 CELULAS)
@@ -186,6 +201,11 @@ class Board:
                 elif self.get_value(r, c).lower() == "r":
                     if self.is_water_or_oob(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty_and_within_bounds(r, c - 1, "l")
+                    elif self.get_value(r, c - 3).lower() == "m":
+                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
+                        self.water_if_empty(r, c - 2)
+                        self.water_if_empty(r, c - 4)
                         self.set_if_empty_and_within_bounds(r, c - 1, "l")
                     elif self.get_value(r, c - 2).lower() == "r":
                         # CRUZADOR (3 CELULAS)
@@ -296,12 +316,13 @@ class Board:
         for i in range(4):
             if self.ships[i] > 4 - i:
                 return False
+
         for c in range(10):
             count = self.ships_in_column(c)
             if count > self.count_column[c]:
                 if DEBUG_LEVEL >= D_VERBOSE:
                     print(
-                        "Column ",
+                        "valid_board: Column ",
                         c,
                         " com mais células com navios (",
                         count,
@@ -312,78 +333,11 @@ class Board:
                 return False
 
         for r in range(10):
-            for c in range(10):
-                if self.ship_in_cell(r, c):
-                    if (
-                        (r == 0 and c == 0)
-                        or (r == 0 and c == 9)
-                        or (r == 9 and c == 0)
-                        or (r == 9 and c == 9)
-                    ) and self.get_value(r, c).lower() == "m":
-                        # M no canto não é uma posição válida
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("M no canto")
-                        return False
-
-                    if not self.check_diagonals(r, c):
-                        # Diagonais
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("Diagonals in ", r, c)
-                            return False
-
-                    v = self.get_value(r, c).lower()
-                    if (
-                        (v == "t" and self.ship_in_cell(r - 1, c))
-                        or (v == "b" and self.ship_in_cell(r + 1, c))
-                        or (v == "l" and self.ship_in_cell(r, c - 1))
-                        or (v == "r" and self.ship_in_cell(r, c + 1))
-                    ):
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("Adjacente na ponta em ", r, c)
-                        return False
-
-                    if (
-                        (v in {"t", "b"})
-                        and (
-                            self.ship_in_cell_value(
-                                self.adjacent_horizontal_values(r, c)[0]
-                            )
-                            or self.ship_in_cell_value(
-                                self.adjacent_horizontal_values(r, c)[1]
-                            )
-                        )
-                    ) or (
-                        (v in {"l", "r"})
-                        and (
-                            self.ship_in_cell_value(
-                                self.adjacent_vertical_values(r, c)[0]
-                            )
-                            or self.ship_in_cell_value(
-                                self.adjacent_vertical_values(r, c)[0]
-                            )
-                        )
-                    ):
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("Adjacente perpendicularmente em ", r, c)
-                        return False
-
-                    if v == "m":
-                        if (
-                            "m" in self.adjacent_horizontal_values(r, c)
-                            or "M" in self.adjacent_horizontal_values(r, c)
-                        ) and (
-                            "m" in self.adjacent_vertical_values(r, c)
-                            or "M" in self.adjacent_vertical_values(r, c)
-                        ):
-                            if DEBUG_LEVEL >= D_VERBOSE:
-                                print("Interseção perpendicular em ", r, c)
-                            return False
-
             count = self.ships_in_row(r)
             if count > self.count_row[r]:
                 if DEBUG_LEVEL >= D_VERBOSE:
                     print(
-                        "Row ",
+                        "valid_board: Row ",
                         r,
                         " com mais células com navios (",
                         count,
@@ -392,6 +346,72 @@ class Board:
                         ")",
                     )
                 return False
+
+            for c in range(10):
+                if self.ship_in_cell(r, c):
+                    if (r, c) in {(0, 0), (0, 9), (9, 0), (9, 9)} and self.get_value(
+                        r, c
+                    ).lower() == "m":
+                        # M no canto não é uma posição válida
+                        if DEBUG_LEVEL >= D_VERBOSE:
+                            print("valid_board: M no canto")
+                        return False
+
+                    if not self.check_diagonals(r, c):
+                        # Diagonais
+                        if DEBUG_LEVEL >= D_VERBOSE:
+                            print("valid_board: Diagonais em ", r, c)
+                            return False
+
+                    v = self.get_value(r, c)
+                    vl = v.lower()
+
+                    if (
+                        (vl == "t" and self.ship_in_cell(r - 1, c))
+                        or (vl == "b" and self.ship_in_cell(r + 1, c))
+                        or (vl == "l" and self.ship_in_cell(r, c - 1))
+                        or (vl == "r" and self.ship_in_cell(r, c + 1))
+                    ):
+                        if DEBUG_LEVEL >= D_VERBOSE:
+                            print("valid_board: Adjacente na ponta em ", r, c)
+                        return False
+
+                    if v in {"T", "B"}:
+                        (left, right) = self.adjacent_horizontal_values(r, c)
+                        if self.ship_in_cell_value(left) or self.ship_in_cell_value(
+                            right
+                        ):
+                            if DEBUG_LEVEL >= D_VERBOSE:
+                                print(
+                                    "valid_board: Adjacente perpendicularmente em ",
+                                    r,
+                                    c,
+                                )
+                            return False
+                    elif v in {"L", "R"}:
+                        (above, below) = self.adjacent_vertical_values(r, c)
+                        if self.ship_in_cell_value(above) or self.ship_in_cell_value(
+                            below
+                        ):
+                            if DEBUG_LEVEL >= D_VERBOSE:
+                                print(
+                                    "valid_board: Adjacente perpendicularmente em ",
+                                    r,
+                                    c,
+                                )
+                            return False
+
+                    if vl == "m":
+                        if (
+                            "m" in self.adjacent_horizontal_values(r, c)
+                            or "M" in self.adjacent_horizontal_values(r, c)
+                        ) and (
+                            "m" in self.adjacent_vertical_values(r, c)
+                            or "M" in self.adjacent_vertical_values(r, c)
+                        ):
+                            if DEBUG_LEVEL >= D_VERBOSE:
+                                print("valid_board: Interseção perpendicular em ", r, c)
+                            return False
         return True
 
     def water_bottom(self, r, c):
@@ -552,12 +572,31 @@ class Board:
                 r, c, size, direction, "Demasiados navios deste tamanho"
             )
             return False
+
         if Board.within_bounds(
             r + (size - 1) * (1 - direction), c + (size - 1) * (direction)
         ):
+            if size == 1:
+                if (
+                    self.ship_in_cell(r - 1, c)
+                    or self.ship_in_cell(r + 1, c)
+                    or self.ship_in_cell(r, c - 1)
+                    or self.ship_in_cell(r, c + 1)
+                    or not self.check_diagonals(r, c)
+                    or self.ship_in_cell(r, c)
+                    or self.is_water(r, c)
+                    or self.ships_in_row(r) + 1 > self.count_row[r]
+                    or self.ships_in_column(c) + 1 > self.count_column[c]
+                ):
+                    return False
+                else:
+                    return True
+
             if direction == HORIZONTAL:
                 if self.get_value(r, c) == "l":
+                    # Navio já inserido
                     return False
+
                 new_count = (
                     self.ships_in_row(r)
                     + size
@@ -569,11 +608,15 @@ class Board:
                     )
                     return False
 
+                if self.ship_in_cell(r, c - 1) or self.ship_in_cell(r, c + size):
+                    Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
+                    return False
+
                 for j in range(size):
                     new_count = (
                         self.ships_in_column(c + j)
                         + 1
-                        - self.cells_existing_in_new_ship(r, c, size, direction)
+                        - int(self.ship_in_cell(r, c + j))
                     )
                     if new_count > self.count_column[c + j]:
                         Board.debug_action_checks(
@@ -588,25 +631,18 @@ class Board:
                 existe = True
                 for i in range(size):
                     cell = self.get_value(r, c + i)
-                    if cell.lower() == "c" and i > 0:
+
+                    if cell.lower() == "c":
+                        return False
+
+                    if self.is_water(r, c + i):
+                        Board.debug_action_checks(r, c, size, direction, "Agua")
                         return False
 
                     if not self.check_diagonals(r, c + i):
                         Board.debug_action_checks(
                             r, c, size, direction, "Diagonais contêm navio"
                         )
-                        return False
-
-                    if (i == 0 and self.ship_in_cell(r, c - 1)) or (
-                        i == size - 1 and self.ship_in_cell(r, c + size)
-                    ):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "Navio adjacente"
-                        )
-                        return False
-
-                    if self.is_water(r, c + i):
-                        Board.debug_action_checks(r, c, size, direction, "Agua")
                         return False
 
                     if cell.lower() == "r" and i < size - 1:
@@ -619,18 +655,15 @@ class Board:
                         )
                         return False
 
-                    (above, below) = self.adjacent_vertical_values(r, c + i)
-                    if self.ship_in_cell_value(above) or self.ship_in_cell_value(below):
+                    if cell.lower() == "l" and i > 0:
                         Board.debug_action_checks(
-                            r, c, size, direction, "Navio adjacente"
+                            r, c, size, direction, f"Overlap na posição {r} {c + i}"
                         )
                         return False
 
-                    if (cell.lower() == "t" and i > 0) or (
-                        cell.lower() == "b" and i < size - 1
-                    ):
+                    if cell.lower() in {"t", "b"}:
                         Board.debug_action_checks(
-                            r, c, size, direction, f"Overlap na posição {r} {c + i}"
+                            r, c, size, direction, f"Overlap na posição {r + i} {c}"
                         )
                         return False
 
@@ -648,6 +681,7 @@ class Board:
             elif direction == VERTICAL:
                 if self.get_value(r, c) == "t":
                     return False
+
                 new_count = (
                     self.ships_in_column(c)
                     + size
@@ -658,11 +692,14 @@ class Board:
                         r, c, size, direction, f"Coluna excederia ajudas ({new_count})"
                     )
                     return False
+
+                if self.ship_in_cell(r - 1, c) or self.ship_in_cell(r + size, c):
+                    Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
+                    return False
+
                 for j in range(size):
                     new_count = (
-                        self.ships_in_row(r + j)
-                        + 1
-                        - self.cells_existing_in_new_ship(r, c, size, direction)
+                        self.ships_in_row(r + j) + 1 - int(self.ship_in_cell(r + j, c))
                     )
                     if new_count > self.count_row[r + j]:
                         Board.debug_action_checks(
@@ -678,19 +715,12 @@ class Board:
                 for i in range(size):
                     cell = self.get_value(r + i, c)
 
-                    if cell.lower() == "c" and i > 0:
+                    if cell.lower() == "c":
                         return False
 
                     if not self.check_diagonals(r + i, c):
                         Board.debug_action_checks(
                             r, c, size, direction, "Diagonais contêm navio"
-                        )
-                        return False
-                    if (i == 0 and self.ship_in_cell(r - 1, c)) or (
-                        i == size - 1 and self.ship_in_cell(r + size, c)
-                    ):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "Navio adjacente"
                         )
                         return False
 
@@ -708,16 +738,7 @@ class Board:
                         )
                         return False
 
-                    (left, right) = self.adjacent_horizontal_values(r + i, c)
-                    if self.ship_in_cell_value(left) or self.ship_in_cell_value(right):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "Navio adjacente"
-                        )
-                        return False
-
-                    if (cell.lower() == "t" and i > 0) or (
-                        cell.lower() == "b" and i < size - 1
-                    ):
+                    if cell.lower() == "t" and i > 0:
                         Board.debug_action_checks(
                             r, c, size, direction, f"Overlap na posição {r + i} {c}"
                         )
@@ -729,6 +750,12 @@ class Board:
                         )
                         return False
 
+                    if cell.lower() in {"l", "r"}:
+                        Board.debug_action_checks(
+                            r, c, size, direction, f"Overlap na posição {r + i} {c}"
+                        )
+                        return False
+
                     if not self.ship_in_cell(r + i, c):
                         existe = False
                 if existe:
@@ -737,6 +764,7 @@ class Board:
                     )
                     return False
             return True
+
         Board.debug_action_checks(r, c, size, direction, "Out of bounds")
         return False
 
@@ -910,6 +938,7 @@ class Bimaru(Problem):
                 action[i] = int(action[i])
             print(action)
             new_state = self.result(new_state, action)
+            print(new_state.board.valid_board())
 
 
 def main():
