@@ -796,7 +796,7 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         if not state.board.valid_board():
-            return np.empty(0, Action)
+            return []
 
         a = []
         s = -1
