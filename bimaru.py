@@ -205,7 +205,6 @@ class Board:
         initial_grid = np.empty([10, 10], str)
         count_row = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
         count_column = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
-        print(count_row, count_column)
 
         n_hints = int(stdin.readline().rstrip("\n"))
 
