@@ -677,12 +677,6 @@ class Board:
                     return True
 
             if direction == HORIZONTAL:
-                if self.get_value(r, c) == "l":
-                    Board.debug_action_checks(
-                        r, c, size, direction, "Navio já presente"
-                    )
-                    return False
-
                 new_count = (
                     self.ships_in_row(r)
                     + size
@@ -765,12 +759,6 @@ class Board:
                     return False
 
             elif direction == VERTICAL:
-                if self.get_value(r, c) == "t":
-                    Board.debug_action_checks(
-                        r, c, size, direction, "Navio já presente"
-                    )
-                    return False
-
                 new_count = (
                     self.ships_in_column(c)
                     + size
