@@ -718,22 +718,6 @@ class Board:
                     Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
                     return False
 
-                for j in range(size):
-                    new_count = (
-                        self.ships_in_column(c + j)
-                        + 1
-                        - int(self.ship_in_cell(r, c + j))
-                    )
-                    if new_count > self.count_column[c + j]:
-                        Board.debug_action_checks(
-                            r,
-                            c,
-                            size,
-                            direction,
-                            f"Coluna {c + j} excederia ajudas ({new_count})",
-                        )
-                        return False
-
                 existe = True
                 for i in range(size):
                     cell = self.get_value(r, c + i)
@@ -799,20 +783,6 @@ class Board:
                 if self.ship_in_cell(r - 1, c) or self.ship_in_cell(r + size, c):
                     Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
                     return False
-
-                for j in range(size):
-                    new_count = (
-                        self.ships_in_row(r + j) + 1 - int(self.ship_in_cell(r + j, c))
-                    )
-                    if new_count > self.count_row[r + j]:
-                        Board.debug_action_checks(
-                            r,
-                            c,
-                            size,
-                            direction,
-                            f"Linha {r+j} excederia ajudas ({new_count})",
-                        )
-                        return False
 
                 existe = True
                 for i in range(size):
@@ -935,6 +905,7 @@ class Bimaru(Problem):
 
         a = []
         s = -1
+        alternate = False
 
         for i in reversed(range(1, 5)):
             if state.board.ships[i - 1] < 5 - i:
@@ -948,10 +919,12 @@ class Bimaru(Problem):
                 for d in range(2):
                     if s != 1:
                         if state.board.check_action(r, c, s, d):
-                            a.append((r, c, s, d))
+                            a.insert(alternate*len(a),(r, c, s, d))
+                            alternate = not alternate
                     else:
                         if state.board.check_action(r, c, s, 0):
-                            a.append((r, c, s, 0))
+                            a.insert(alternate*len(a),(r, c, s, 0))
+                            alternate = not alternate
                         break
 
         n_actions = len(a)
