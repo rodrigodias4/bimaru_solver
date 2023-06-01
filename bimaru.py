@@ -112,10 +112,10 @@ class Board:
 
     def inferences(self):
         for r in range(10):
-            if self.ships_in_row(r) == self.count_row[r]:
+            if self.ship_cells_in_row(r) == self.count_row[r]:
                 for i in range(10):
                     self.water_if_empty(r, i)
-            if self.ships_in_column(r) == self.count_column[r]:
+            if self.ship_cells_in_column(r) == self.count_column[r]:
                 for i in range(10):
                     self.water_if_empty(i, r)
 
@@ -133,21 +133,21 @@ class Board:
 
                     (above, below) = self.adjacent_vertical_values(r, c)
                     (left, right) = self.adjacent_horizontal_values(r, c)
-                    if self.ships_in_row(r) + 2 > self.count_row[r] and not (
+                    if self.ship_cells_in_row(r) + 2 > self.count_row[r] and not (
                         left.lower() == "l"
                         or right.lower() == "r"
                         or "m" in {left.lower(), right.lower()}
                     ):
                         self.water_if_empty(r, c - 1)
                         self.water_if_empty(r, c + 1)
-                    elif self.ships_in_column(c) + 2 > self.count_column[c] and not (
+                    elif self.ship_cells_in_column(c) + 2 > self.count_column[c] and not (
                         above.lower() == "t"
                         or below.lower() == "b"
                         or "m" in {above.lower(), below.lower()}
                     ):
                         self.water_if_empty(r - 1, c)
                         self.water_if_empty(r + 1, c)
-                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                    elif self.ship_cells_in_row(r) + 1 == self.count_row[r]:
                         if (
                             left.lower() == "l"
                             and self.get_value(r, c + 2).lower() != "r"
@@ -158,7 +158,7 @@ class Board:
                             and self.get_value(r, c - 2).lower() != "l"
                         ):
                             self.set_if_empty(r, c - 1, "l")
-                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                    elif self.ship_cells_in_column(c) + 1 == self.count_column[c]:
                         if (
                             above.lower() == "t"
                             and self.get_value(r + 2, c).lower() != "b"
@@ -185,7 +185,7 @@ class Board:
                     if self.is_water_or_oob(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r + 1, c, "b")
-                    elif self.ships_in_column(c) + 1 == self.count_column[
+                    elif self.ship_cells_in_column(c) + 1 == self.count_column[
                         c
                     ] and not self.ship_in_cell(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -216,7 +216,7 @@ class Board:
                     if self.is_water_or_oob(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r - 1, c, "t")
-                    elif self.ships_in_column(c) + 1 == self.count_column[
+                    elif self.ship_cells_in_column(c) + 1 == self.count_column[
                         c
                     ] and not self.ship_in_cell(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -247,7 +247,7 @@ class Board:
                     if self.is_water_or_oob(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c + 1, "r")
-                    elif self.ships_in_row(r) + 1 == self.count_row[
+                    elif self.ship_cells_in_row(r) + 1 == self.count_row[
                         r
                     ] and not self.ship_in_cell(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -278,7 +278,7 @@ class Board:
                     if self.is_water_or_oob(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c - 1, "l")
-                    elif self.ships_in_row(r) + 1 == self.count_row[
+                    elif self.ship_cells_in_row(r) + 1 == self.count_row[
                         r
                     ] and not self.ship_in_cell(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -407,9 +407,9 @@ class Board:
                             print(f"m {r} {c}")
                         return False
         for i in range(10):
-            if self.ships_in_row(i) != self.count_row[i]:
+            if self.ship_cells_in_row(i) != self.count_row[i]:
                 return False
-            if self.ships_in_column(i) != self.count_column[i]:
+            if self.ship_cells_in_column(i) != self.count_column[i]:
                 return False
         return True
 
@@ -419,7 +419,7 @@ class Board:
                 return False
 
         for c in range(10):
-            count = self.ships_in_column(c)
+            count = self.ship_cells_in_column(c)
             if count > self.count_column[c]:
                 if DEBUG_LEVEL >= D_VERBOSE:
                     print(
@@ -434,7 +434,7 @@ class Board:
                 return False
 
         for r in range(10):
-            count = self.ships_in_row(r)
+            count = self.ship_cells_in_row(r)
             if count > self.count_row[r]:
                 if DEBUG_LEVEL >= D_VERBOSE:
                     print(
@@ -595,10 +595,10 @@ class Board:
 
     def water_infer_full_lines(self):
         for i in range(10):
-            if self.ships_in_row(i) >= self.count_row[i]:
+            if self.ship_cells_in_row(i) >= self.count_row[i]:
                 for j in range(10):
                     self.water_if_empty(i, j)
-            if self.ships_in_column(i) >= self.count_column[i]:
+            if self.ship_cells_in_column(i) >= self.count_column[i]:
                 for j in range(10):
                     self.water_if_empty(j, i)
 
@@ -635,8 +635,6 @@ class Board:
         )
 
     def ship_in_cell(self, r, c) -> bool:
-        if not Board.within_bounds(r, c):
-            return False
         temp = self.get_value(r, c)
         return temp not in {"", ".", "None", "W"}
 
@@ -651,14 +649,14 @@ class Board:
             )
         return False
 
-    def ships_in_row(self, r) -> int:
+    def ship_cells_in_row(self, r) -> int:
         count = 0
         for i in range(10):
             if self.ship_in_cell(r, i):
                 count += 1
         return count
 
-    def ships_in_column(self, c) -> int:
+    def ship_cells_in_column(self, c) -> int:
         count = 0
         for i in range(10):
             if self.ship_in_cell(i, c):
@@ -695,8 +693,8 @@ class Board:
                     or not self.check_diagonals(r, c)
                     or self.ship_in_cell(r, c)
                     or self.is_water(r, c)
-                    or self.ships_in_row(r) + 1 > self.count_row[r]
-                    or self.ships_in_column(c) + 1 > self.count_column[c]
+                    or self.ship_cells_in_row(r) + 1 > self.count_row[r]
+                    or self.ship_cells_in_column(c) + 1 > self.count_column[c]
                 ):
                     return False
                 else:
@@ -704,7 +702,7 @@ class Board:
 
             if direction == HORIZONTAL:
                 new_count = (
-                    self.ships_in_row(r)
+                    self.ship_cells_in_row(r)
                     + size
                     - self.cells_existing_in_new_ship(r, c, size, direction)
                 )
@@ -770,7 +768,7 @@ class Board:
 
             elif direction == VERTICAL:
                 new_count = (
-                    self.ships_in_column(c)
+                    self.ship_cells_in_column(c)
                     + size
                     - self.cells_existing_in_new_ship(r, c, size, direction)
                 )
