@@ -112,16 +112,32 @@ class Board:
 
     def inferences(self):
         for r in range(10):
+            if self.ships_in_row(r) == self.count_row[r]:
+                for i in range(10):
+                    self.water_if_empty(r, i)
+            if self.ships_in_column(r) == self.count_column[r]:
+                for i in range(10):
+                    self.water_if_empty(i, r)
+
             for c in range(10):
                 if self.get_value(r, c).lower() == "m":
                     if r == 0:
                         self.water_if_empty(r + 1, c)
                     elif r == 9:
                         self.water_if_empty(r - 1, c)
+
                     if c == 0:
                         self.water_if_empty(r, c + 1)
                     elif c == 9:
                         self.water_if_empty(r, c - 1)
+
+                    if self.ships_in_row(r) + 2 > self.count_row[r]:
+                        self.water_if_empty(r, c - 1)
+                        self.water_if_empty(r, c + 1)
+                    elif self.ships_in_column(c) + 2 > self.count_column[c]:
+                        self.water_if_empty(r - 1, c)
+                        self.water_if_empty(r + 1, c)
+
                 elif self.get_value(r, c).lower() == "t":
                     if self.is_water_or_oob(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -147,6 +163,7 @@ class Board:
                         self.set_if_empty_and_within_bounds(r + 3, c, "b")
                         self.set_if_empty_and_within_bounds(r + 1, c, "m")
                         self.water_bottom(r + 3, c)
+
                 elif self.get_value(r, c).lower() == "b":
                     if self.is_water_or_oob(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -172,6 +189,7 @@ class Board:
                         self.set_if_empty_and_within_bounds(r - 3, c, "t")
                         self.set_if_empty_and_within_bounds(r - 1, c, "m")
                         self.water_top(r - 3, c)
+
                 elif self.get_value(r, c).lower() == "l":
                     if self.is_water_or_oob(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
@@ -227,8 +245,8 @@ class Board:
     @staticmethod
     def parse_instance():
         initial_grid = np.empty([10, 10], str)
-        count_row = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
-        count_column = np.array(stdin.readline().rstrip("\n").split("\t")[1:], int)
+        count_row = np.array(stdin.readline().rstrip("\n").split("\t")[1:], np.ubyte)
+        count_column = np.array(stdin.readline().rstrip("\n").split("\t")[1:], np.ubyte)
 
         n_hints = int(stdin.readline().rstrip("\n"))
 
@@ -236,9 +254,23 @@ class Board:
             line = stdin.readline().rstrip("\n").split("\t")[1:]
             initial_grid[int(line[0]), int(line[1])] = line[2]
 
-        initial_board = Board(initial_grid, np.zeros(4, int), count_row, count_column)
-        initial_board.inferences()
+        initial_board = Board(
+            initial_grid, np.zeros(4, np.ubyte), count_row, count_column
+        )
+
+        while True:
+            previous_board = Board(
+                np.array(initial_board.grid, str),
+                np.array(initial_board.ships, np.ubyte),
+                np.array(initial_board.count_row, np.ubyte),
+                np.array(initial_board.count_column, np.ubyte),
+            )
+            initial_board.inferences()
+            if initial_board.__eq__(previous_board):
+                break
+
         initial_board.ship_count()
+
         if not initial_board.valid_board():
             sys.exit("Tabuleiro inicial inválido")
         else:
@@ -249,6 +281,8 @@ class Board:
         return r >= 0 and r < 10 and c >= 0 and c < 10
 
     def ship_count(self):
+        self.ships = np.zeros(4, np.ubyte)
+
         for r in range(10):
             for c in range(10):
                 if self.get_value(r, c).lower() == "c":
@@ -492,6 +526,15 @@ class Board:
         self.water_if_empty(r + 1, c)
         self.water_if_empty(r + 1, c + 1)
 
+    def water_infer_full_lines(self):
+        for i in range(10):
+            if self.ships_in_row(i) >= self.count_row[i]:
+                for j in range(10):
+                    self.water_if_empty(i, j)
+            if self.ships_in_column(i) >= self.count_column[i]:
+                for j in range(10):
+                    self.water_if_empty(j, i)
+
     def water_all_empty(self):
         for r in range(10):
             for c in range(10):
@@ -594,7 +637,9 @@ class Board:
 
             if direction == HORIZONTAL:
                 if self.get_value(r, c) == "l":
-                    # Navio já inserido
+                    Board.debug_action_checks(
+                        r, c, size, direction, "Navio já presente"
+                    )
                     return False
 
                 new_count = (
@@ -680,6 +725,9 @@ class Board:
 
             elif direction == VERTICAL:
                 if self.get_value(r, c) == "t":
+                    Board.debug_action_checks(
+                        r, c, size, direction, "Navio já presente"
+                    )
                     return False
 
                 new_count = (
@@ -901,6 +949,8 @@ class Bimaru(Problem):
 
         new_state.board.water_fill()
         new_state.board.ships[ship_size - 1] += 1
+        new_state.board.inferences()
+        new_state.board.ship_count()
 
         if DEBUG_LEVEL >= D_MINIMUM:
             buf += f"to state {new_state.id} :\n"
