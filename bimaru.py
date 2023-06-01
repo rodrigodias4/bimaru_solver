@@ -104,7 +104,7 @@ class Board:
             if self.grid[r, c] == "":
                 self.grid[r, c] = "."
 
-    def set_if_empty_and_within_bounds(self, r: int, c: int, value: str):
+    def set_if_empty(self, r: int, c: int, value: str):
         """Coloca o valor indicado na célula se esta estiver vazia"""
         if Board.within_bounds(r, c):
             if self.get_value(r, c) == "":
@@ -131,116 +131,156 @@ class Board:
                     elif c == 9:
                         self.water_if_empty(r, c - 1)
 
-                    if self.ships_in_row(r) + 2 > self.count_row[r]:
+                    (above, below) = self.adjacent_vertical_values(r, c)
+                    (left, right) = self.adjacent_horizontal_values(r, c)
+                    if self.ships_in_row(r) + 2 > self.count_row[r] and not (
+                        left.lower() == "l" or right.lower() == "r"
+                    ):
                         self.water_if_empty(r, c - 1)
                         self.water_if_empty(r, c + 1)
-                    elif self.ships_in_column(c) + 2 > self.count_column[c]:
+                    elif self.ships_in_column(c) + 2 > self.count_column[c] and not (
+                        above.lower() == "t" or below.lower() == "b"
+                    ):
                         self.water_if_empty(r - 1, c)
                         self.water_if_empty(r + 1, c)
+                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                        if left.lower() == "l":
+                            self.set_if_empty(r, c + 1, "r")
+                        elif right.lower() == "r":
+                            self.set_if_empty(r, c - 1, "l")
+                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                        if above.lower() == "t":
+                            self.set_if_empty(r + 1, c, "b")
+                        elif below.lower() == "b":
+                            self.set_if_empty(r - 1, c, "t")
+
+                    if self.is_water(r, c - 1) or self.is_water(r, c + 1):
+                        if self.is_water_or_oob(r - 2, c):
+                            self.set_if_empty(r - 1, c, "t")
+                        elif self.is_water_or_oob(r + 2, c):
+                            self.set_if_empty(r + 1, c, "b")
+                    elif self.is_water(r - 1, c) or self.is_water(r + 1, c):
+                        if self.is_water_or_oob(r, c - 2):
+                            self.set_if_empty(r, c - 1, "l")
+                        elif self.is_water_or_oob(r, c + 2):
+                            self.set_if_empty(r, c + 1, "r")
 
                 elif self.get_value(r, c).lower() == "t":
                     if self.is_water_or_oob(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty_and_within_bounds(r + 1, c, "b")
+                        self.set_if_empty(r + 1, c, "b")
+                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                        # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty(r + 1, c, "b")
                     elif self.get_value(r + 3, c).lower() == "m":
                         # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
                         self.water_if_empty(r + 2, c)
                         self.water_if_empty(r + 4, c)
-                        self.set_if_empty_and_within_bounds(r + 1, c, "b")
+                        self.set_if_empty(r + 1, c, "b")
                     elif self.get_value(r + 2, c).lower() == "b":
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r + 1, c, "m")
+                        self.set_if_empty(r + 1, c, "m")
                     elif self.get_value(
                         r + 1, c
                     ).lower() == "m" and self.is_water_or_oob(r + 3, c):
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r + 2, c, "b")
+                        self.set_if_empty(r + 2, c, "b")
                         self.water_bottom(r + 2, c)
                     elif self.get_value(
                         r + 2, c
                     ).lower() == "m" and self.is_water_or_oob(r + 4, c):
                         # COURAÇADO (4 CELULAS)
-                        self.set_if_empty_and_within_bounds(r + 3, c, "b")
-                        self.set_if_empty_and_within_bounds(r + 1, c, "m")
+                        self.set_if_empty(r + 3, c, "b")
+                        self.set_if_empty(r + 1, c, "m")
                         self.water_bottom(r + 3, c)
 
                 elif self.get_value(r, c).lower() == "b":
                     if self.is_water_or_oob(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty_and_within_bounds(r - 1, c, "t")
+                        self.set_if_empty(r - 1, c, "t")
+                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                        # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty(r - 1, c, "t")
                     elif self.get_value(r - 3, c).lower() == "m":
                         # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
                         self.water_if_empty(r - 2, c)
                         self.water_if_empty(r - 4, c)
-                        self.set_if_empty_and_within_bounds(r - 1, c, "t")
+                        self.set_if_empty(r - 1, c, "t")
                     elif self.get_value(r - 2, c).lower() == "t":
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r - 1, c, "m")
+                        self.set_if_empty(r - 1, c, "m")
                     elif self.get_value(
                         r - 1, c
                     ).lower() == "m" and self.is_water_or_oob(r - 3, c):
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r - 2, c, "t")
+                        self.set_if_empty(r - 2, c, "t")
                         self.water_top(r - 2, c)
                     elif self.get_value(
                         r - 2, c
                     ).lower() == "m" and self.is_water_or_oob(r - 4, c):
                         # COURAÇADO (4 CELULAS)
-                        self.set_if_empty_and_within_bounds(r - 3, c, "t")
-                        self.set_if_empty_and_within_bounds(r - 1, c, "m")
+                        self.set_if_empty(r - 3, c, "t")
+                        self.set_if_empty(r - 1, c, "m")
                         self.water_top(r - 3, c)
 
                 elif self.get_value(r, c).lower() == "l":
                     if self.is_water_or_oob(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c + 1, "r")
+                        self.set_if_empty(r, c + 1, "r")
+                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                        # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty(r, c + 1, "r")
                     elif self.get_value(r, c + 3).lower() == "m":
                         # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
                         self.water_if_empty(r, c + 2)
                         self.water_if_empty(r, c + 4)
-                        self.set_if_empty_and_within_bounds(r, c + 1, "r")
+                        self.set_if_empty(r, c + 1, "r")
                     elif self.get_value(r, c + 2).lower() == "b":
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c + 1, "m")
+                        self.set_if_empty(r, c + 1, "m")
                     elif self.get_value(
                         r, c + 1
                     ).lower() == "m" and self.is_water_or_oob(r, c + 3):
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c + 2, "r")
+                        self.set_if_empty(r, c + 2, "r")
                         self.water_right(r, c + 2)
                     elif self.get_value(
                         r, c + 2
                     ).lower() == "m" and self.is_water_or_oob(r, c + 4):
                         # COURAÇADO (4 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c + 3, "r")
-                        self.set_if_empty_and_within_bounds(r, c + 1, "m")
+                        self.set_if_empty(r, c + 3, "r")
+                        self.set_if_empty(r, c + 1, "m")
                         self.water_right(r, c + 3)
 
                 elif self.get_value(r, c).lower() == "r":
                     if self.is_water_or_oob(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c - 1, "l")
+                        self.set_if_empty(r, c - 1, "l")
+                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                        # CONTRATORPEDEIRO (2 CELULAS)
+                        self.set_if_empty(r, c - 1, "l")
                     elif self.get_value(r, c - 3).lower() == "m":
                         # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
                         self.water_if_empty(r, c - 2)
                         self.water_if_empty(r, c - 4)
-                        self.set_if_empty_and_within_bounds(r, c - 1, "l")
+                        self.set_if_empty(r, c - 1, "l")
                     elif self.get_value(r, c - 2).lower() == "r":
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c - 1, "m")
+                        self.set_if_empty(r, c - 1, "m")
                     elif self.get_value(
                         r, c - 1
                     ).lower() == "m" and self.is_water_or_oob(r, c - 3):
                         # CRUZADOR (3 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c - 2, "l")
+                        self.set_if_empty(r, c - 2, "l")
                         self.water_left(r, c - 2)
                     elif self.get_value(
                         r, c - 2
                     ).lower() == "m" and self.is_water_or_oob(r, c - 4):
                         # COURAÇADO (4 CELULAS)
-                        self.set_if_empty_and_within_bounds(r, c - 3, "l")
-                        self.set_if_empty_and_within_bounds(r, c - 1, "m")
+                        self.set_if_empty(r, c - 3, "l")
+                        self.set_if_empty(r, c - 1, "m")
                         self.water_left(r, c - 3)
+        self.water_fill()
 
     @staticmethod
     def parse_instance():
@@ -265,6 +305,7 @@ class Board:
                 np.array(initial_board.count_row, np.ubyte),
                 np.array(initial_board.count_column, np.ubyte),
             )
+            # print(initial_board.print_debug())
             initial_board.inferences()
             if initial_board.__eq__(previous_board):
                 break
@@ -841,7 +882,11 @@ class Board:
                 print(self.get_value(r, c), end="", sep="")
             print("")
 
-    # TODO: outros metodos da classe
+    def __eq__(self, other):
+        return np.array_equal(self.grid, other.grid)
+
+    def __hash__(self):
+        return hash(str(self.grid))
 
 
 class BimaruState:
@@ -933,21 +978,16 @@ class Bimaru(Problem):
             new_state.board.grid[row, col] = "c"
         else:
             if direction == HORIZONTAL:
-                new_state.board.set_if_empty_and_within_bounds(row, col, "l")
-                new_state.board.set_if_empty_and_within_bounds(
-                    row, col + ship_size - 1, "r"
-                )
+                new_state.board.set_if_empty(row, col, "l")
+                new_state.board.set_if_empty(row, col + ship_size - 1, "r")
             else:
-                new_state.board.set_if_empty_and_within_bounds(row, col, "t")
-                new_state.board.set_if_empty_and_within_bounds(
-                    row + ship_size - 1, col, "b"
-                )
+                new_state.board.set_if_empty(row, col, "t")
+                new_state.board.set_if_empty(row + ship_size - 1, col, "b")
             for i in range(1, ship_size - 1):
-                new_state.board.set_if_empty_and_within_bounds(
+                new_state.board.set_if_empty(
                     row + i * (1 - direction), col + i * direction, "m"
                 )
 
-        new_state.board.water_fill()
         new_state.board.ships[ship_size - 1] += 1
         new_state.board.inferences()
         new_state.board.ship_count()
