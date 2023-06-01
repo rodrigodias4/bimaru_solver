@@ -134,35 +134,51 @@ class Board:
                     (above, below) = self.adjacent_vertical_values(r, c)
                     (left, right) = self.adjacent_horizontal_values(r, c)
                     if self.ships_in_row(r) + 2 > self.count_row[r] and not (
-                        left.lower() == "l" or right.lower() == "r"
+                        left.lower() == "l"
+                        or right.lower() == "r"
+                        or "m" in {left.lower(), right.lower()}
                     ):
                         self.water_if_empty(r, c - 1)
                         self.water_if_empty(r, c + 1)
                     elif self.ships_in_column(c) + 2 > self.count_column[c] and not (
-                        above.lower() == "t" or below.lower() == "b"
+                        above.lower() == "t"
+                        or below.lower() == "b"
+                        or "m" in {above.lower(), below.lower()}
                     ):
                         self.water_if_empty(r - 1, c)
                         self.water_if_empty(r + 1, c)
                     elif self.ships_in_row(r) + 1 == self.count_row[r]:
-                        if left.lower() == "l":
+                        if (
+                            left.lower() == "l"
+                            and self.get_value(r, c + 2).lower() != "r"
+                        ):
                             self.set_if_empty(r, c + 1, "r")
-                        elif right.lower() == "r":
+                        elif (
+                            right.lower() == "r"
+                            and self.get_value(r, c - 2).lower() != "l"
+                        ):
                             self.set_if_empty(r, c - 1, "l")
                     elif self.ships_in_column(c) + 1 == self.count_column[c]:
-                        if above.lower() == "t":
+                        if (
+                            above.lower() == "t"
+                            and self.get_value(r + 2, c).lower() != "b"
+                        ):
                             self.set_if_empty(r + 1, c, "b")
-                        elif below.lower() == "b":
+                        elif (
+                            below.lower() == "b"
+                            and self.get_value(r - 2, c).lower() != "t"
+                        ):
                             self.set_if_empty(r - 1, c, "t")
 
                     if self.is_water(r, c - 1) or self.is_water(r, c + 1):
                         if self.is_water_or_oob(r - 2, c):
                             self.set_if_empty(r - 1, c, "t")
-                        elif self.is_water_or_oob(r + 2, c):
+                        if self.is_water_or_oob(r + 2, c):
                             self.set_if_empty(r + 1, c, "b")
                     elif self.is_water(r - 1, c) or self.is_water(r + 1, c):
                         if self.is_water_or_oob(r, c - 2):
                             self.set_if_empty(r, c - 1, "l")
-                        elif self.is_water_or_oob(r, c + 2):
+                        if self.is_water_or_oob(r, c + 2):
                             self.set_if_empty(r, c + 1, "r")
 
                 elif self.get_value(r, c).lower() == "t":
@@ -241,7 +257,7 @@ class Board:
                         self.water_if_empty(r, c + 2)
                         self.water_if_empty(r, c + 4)
                         self.set_if_empty(r, c + 1, "r")
-                    elif self.get_value(r, c + 2).lower() == "b":
+                    elif self.get_value(r, c + 2).lower() == "r":
                         # CRUZADOR (3 CELULAS)
                         self.set_if_empty(r, c + 1, "m")
                     elif self.get_value(
