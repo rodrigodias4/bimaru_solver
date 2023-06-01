@@ -169,7 +169,9 @@ class Board:
                     if self.is_water_or_oob(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r + 1, c, "b")
-                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                    elif self.ships_in_column(c) + 1 == self.count_column[
+                        c
+                    ] and not self.ship_in_cell(r + 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r + 1, c, "b")
                     elif self.get_value(r + 3, c).lower() == "m":
@@ -198,7 +200,9 @@ class Board:
                     if self.is_water_or_oob(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r - 1, c, "t")
-                    elif self.ships_in_column(c) + 1 == self.count_column[c]:
+                    elif self.ships_in_column(c) + 1 == self.count_column[
+                        c
+                    ] and not self.ship_in_cell(r - 2, c):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r - 1, c, "t")
                     elif self.get_value(r - 3, c).lower() == "m":
@@ -227,7 +231,9 @@ class Board:
                     if self.is_water_or_oob(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c + 1, "r")
-                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                    elif self.ships_in_row(r) + 1 == self.count_row[
+                        r
+                    ] and not self.ship_in_cell(r, c + 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c + 1, "r")
                     elif self.get_value(r, c + 3).lower() == "m":
@@ -256,7 +262,9 @@ class Board:
                     if self.is_water_or_oob(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c - 1, "l")
-                    elif self.ships_in_row(r) + 1 == self.count_row[r]:
+                    elif self.ships_in_row(r) + 1 == self.count_row[
+                        r
+                    ] and not self.ship_in_cell(r, c - 2):
                         # CONTRATORPEDEIRO (2 CELULAS)
                         self.set_if_empty(r, c - 1, "l")
                     elif self.get_value(r, c - 3).lower() == "m":
@@ -311,6 +319,8 @@ class Board:
                 break
 
         initial_board.ship_count()
+        if DEBUG_LEVEL >= D_MINIMUM:
+            print(initial_board.print_debug())
 
         if not initial_board.valid_board():
             sys.exit("Tabuleiro inicial inválido")
@@ -1023,7 +1033,6 @@ def main():
     initial_board = Board.parse_instance()
     bimaru = Bimaru(initial_board)
     if DEBUG_LEVEL >= D_MINIMUM:
-        print(bimaru.initial.board.print_debug())
         print("")
         print(bimaru.initial.board.ships)
         print("")
