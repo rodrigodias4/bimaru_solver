@@ -945,10 +945,9 @@ class Bimaru(Problem):
         elif state.board.ships[s - 1] + n_actions == 5 - s:
             # As ações têm de ser mutuamente compatíveis, pelo que só
             # vale a pena seguir um ramo (se forem, aparecerão no filho)
-            print("LOL")
             return [tuple(a[50])]
-
-        return a[50 - int(np.floor(even*(n_actions)/2)):50+ int(np.floor((int(not even))*n_actions/2))].tolist()
+        print(50 - int(np.floor(n_actions/2)),50+ int(np.floor(n_actions/2)),n_actions)
+        return a[50 - int(np.floor(n_actions/2)):50+ int(np.floor(n_actions/2))].tolist()
 
     def result(self, state: BimaruState, action: Action) -> BimaruState:
         """Retorna o estado resultante de executar a 'action' sobre
