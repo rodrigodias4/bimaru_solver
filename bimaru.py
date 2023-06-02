@@ -648,6 +648,15 @@ class Board:
                 self.ship_in_cell(r, c - 1) or self.ship_in_cell(r, c + 1)
             )
         return False
+    
+    def empty_cells(self) -> int:
+        count = 0
+        for r in range(10):
+            for c in range(10):
+                if self.get_value(r,c) == "":
+                    count += 1
+        return count
+                
 
     def ship_cells_in_row(self, r) -> int:
         count = 0
@@ -983,6 +992,7 @@ class Bimaru(Problem):
             buf += "ships : " + str(new_state.board.ships) + "\n"
             actions = self.actions(new_state)
             buf += "actions: " + str(actions) + "\n"
+            # buf += "empty cells: " + f"{new_state.board.empty_cells()}"
             # buf += "valid: " + str(new_state.board.valid_board())
             print(buf)
         return new_state
@@ -1000,9 +1010,11 @@ class Bimaru(Problem):
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
-        ship_count = node.state.board.ships
-        # return 20 - ship_count[0] * 1 - ship_count[1] * 2 - ship_count[2] * 3 - ship_count[3] * 3
-        return 10 - ship_count[0] - ship_count[1] - ship_count[2] - ship_count[3]
+        ships = node.state.board.ships
+        if node.state.n_actions != 0:
+            return float(node.state.board.empty_cells()) + 10 - ships[0] - ships[1]*2 - ships[2]*3 - ships[3]*4
+        else:
+            return 999
 
     def debug_loop(self):
         action = ()
@@ -1025,11 +1037,9 @@ def main():
         print("")
         print(bimaru.actions(bimaru.initial))
 
-    # start = time.perf_counter()
     # goal_node = depth_first_tree_search(bimaru)
     goal_node = depth_first_graph_search(bimaru)
-    # goal_node = astar_search(bimaru,bimaru.h)
-    # end = time.perf_counter()
+    # goal_node = greedy_search(bimaru)
 
     # bimaru.debug_loop()
 
