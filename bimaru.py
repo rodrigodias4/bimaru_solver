@@ -22,7 +22,7 @@ VERTICAL = 0
 D_NONE = 0
 D_MINIMUM = 1
 D_VERBOSE = 2
-DEBUG_LEVEL = D_MINIMUM
+DEBUG_LEVEL = D_NONE
 A_ROW = 0
 A_COL = 1
 A_SIZE = 2
@@ -912,7 +912,6 @@ class Bimaru(Problem):
 
         a = np.empty(100, (int,4))
         s = -1
-        even = False
         n_actions = 0
 
         for i in reversed(range(1, 5)):
@@ -928,15 +927,15 @@ class Bimaru(Problem):
                     if s != 1:
                         if state.board.check_action(r, c, s, d):
                             n_actions += 1
-                            i = 50 - int(np.floor(even*(n_actions)/2)) + int(np.floor((not even)*n_actions/2))
-                            a[i] = (r, c, s, d)
-                            even = not even
+                            even = 1 - (n_actions % 2)
+                            i = 50 + int(even*(n_actions/2)) - int(np.floor((not even)*n_actions/2))
+                            a[i] = np.array([r, c, s, d])
                     else:
                         if state.board.check_action(r, c, s, 0):
                             n_actions += 1
-                            i = 50 - int(np.floor(int(even)*(n_actions)/2)) + int(np.floor((int(not even))*n_actions/2))
-                            a[i] = (r, c, s, 0)
-                            even = not even
+                            even = 1 - (n_actions % 2)
+                            i = 50 + int(even*(n_actions/2)) - int(np.floor((not even)*n_actions/2))
+                            a[i] = np.array([r, c, s, 0])
                         break
 
         if state.board.ships[s - 1] + n_actions < 5 - s:
@@ -945,9 +944,10 @@ class Bimaru(Problem):
         elif state.board.ships[s - 1] + n_actions == 5 - s:
             # As ações têm de ser mutuamente compatíveis, pelo que só
             # vale a pena seguir um ramo (se forem, aparecerão no filho)
-            return [tuple(a[50])]
-        print(50 - int(np.floor(n_actions/2)),50+ int(np.floor(n_actions/2)),n_actions)
-        return a[50 - int(np.floor(n_actions/2)):50+ int(np.floor(n_actions/2))].tolist()
+            return [a[50]]
+        
+        #print(50 - int(np.ceil(n_actions/2 - 1)), 50 + int(np.floor(n_actions/2) + 1), n_actions)
+        return a[50 - int(np.ceil(n_actions/2 - 1)): 50 + int(np.floor(n_actions/2)) + 1].tolist()
 
     def result(self, state: BimaruState, action: Action) -> BimaruState:
         """Retorna o estado resultante de executar a 'action' sobre
