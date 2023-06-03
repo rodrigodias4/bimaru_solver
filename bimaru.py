@@ -62,6 +62,9 @@ class Board:
         v = self.get_value(r, c)
         return v in {".", "W"}
 
+    def is_water_value(self, v) -> bool:
+        return v in {".", "W"}
+
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
@@ -107,8 +110,125 @@ class Board:
     def set_if_empty(self, r: int, c: int, value: str):
         """Coloca o valor indicado na célula se esta estiver vazia"""
         if Board.within_bounds(r, c):
-            if self.get_value(r, c) == "":
+            if self.grid[r, c] == "":
                 self.grid[r, c] = value
+
+    def inferences_middle(self, r, c):
+        if r == 0:
+            self.water_if_empty(r + 1, c)
+        elif r == 9:
+            self.water_if_empty(r - 1, c)
+
+        if c == 0:
+            self.water_if_empty(r, c + 1)
+        elif c == 9:
+            self.water_if_empty(r, c - 1)
+
+        (above, below) = self.adjacent_vertical_values(r, c)
+        (above, below) = (above.lower(), below.lower())
+        (left, right) = self.adjacent_horizontal_values(r, c)
+        (left, right) = (left.lower(), right.lower())
+        if self.ship_cells_in_row(r) + 2 > self.count_row[r] and not (
+            left == "l" or right == "r" or "m" in {left, right}
+        ):
+            self.water_if_empty(r, c - 1)
+            self.water_if_empty(r, c + 1)
+        elif self.ship_cells_in_column(c) + 2 > self.count_column[c] and not (
+            above == "t" or below == "b" or "m" in {above, below}
+        ):
+            self.water_if_empty(r - 1, c)
+            self.water_if_empty(r + 1, c)
+        elif self.ship_cells_in_row(r) + 1 == self.count_row[r]:
+            if left == "l" and self.get_value(r, c + 2).lower() != "r":
+                self.set_if_empty(r, c + 1, "r")
+            elif right == "r" and self.get_value(r, c - 2).lower() != "l":
+                self.set_if_empty(r, c - 1, "l")
+        elif self.ship_cells_in_column(c) + 1 == self.count_column[c]:
+            if above == "t" and self.get_value(r + 2, c).lower() != "b":
+                self.set_if_empty(r + 1, c, "b")
+            elif below == "b" and self.get_value(r - 2, c).lower() != "t":
+                self.set_if_empty(r - 1, c, "t")
+
+        if self.is_water(r, c - 1) or self.is_water(r, c + 1):
+            if self.is_water_or_oob(r - 2, c):
+                self.set_if_empty(r - 1, c, "t")
+            if self.is_water_or_oob(r + 2, c):
+                self.set_if_empty(r + 1, c, "b")
+        elif self.is_water(r - 1, c) or self.is_water(r + 1, c):
+            if self.is_water_or_oob(r, c - 2):
+                self.set_if_empty(r, c - 1, "l")
+            if self.is_water_or_oob(r, c + 2):
+                self.set_if_empty(r, c + 1, "r")
+
+    def inferences_template(self, r, c, inicio):
+        inicio = inicio.lower()
+        if inicio == "t":
+            fim = "b"
+            d = VERTICAL
+            s = 1
+        elif inicio == "b":
+            fim = "t"
+            d = VERTICAL
+            s = -1
+        elif inicio == "l":
+            fim = "r"
+            d = HORIZONTAL
+            s = 1
+        elif inicio == "r":
+            fim = "l"
+            d = HORIZONTAL
+            s = -1
+        else:
+            return
+
+        if self.is_water_or_oob(r + 2 * (1 - d) * s, c + 2 * d * s):
+            # CONTRATORPEDEIRO (2 CELULAS)
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, fim)
+        elif (
+            self.ship_cells_in_column(c) * (1 - d) * s
+            + self.ship_cells_in_row(r) * d * s
+            + 1
+            == self.count_column[c] * (1 - d) * s + self.count_row[r] * d * s
+        ) and not self.ship_in_cell(r + 2 * (1 - d) * s, c + 2 * d * s):
+            # CONTRATORPEDEIRO (2 CELULAS)
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, fim)
+        elif self.get_value(r + 3 * (1 - d) * s, c + 3 * d * s).lower() == "m":
+            # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
+            self.water_if_empty(r + 2 * (1 - d) * s, c + 2 * d * s)
+            self.water_if_empty(r + 4 * (1 - d) * s, c + 4 * d * s)
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, fim)
+        elif self.get_value(r + 2 * (1 - d) * s, c + 2 * d * s).lower() == fim:
+            # CRUZADOR (3 CELULAS)
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
+        elif self.get_value(
+            r + 1 * (1 - d) * s, c + 1 * d * s
+        ).lower() == "m" and self.is_water_or_oob(
+            r + 3 * (1 - d) * s, c + 3 * d * s
+        ):
+            # CRUZADOR (3 CELULAS)
+            self.set_if_empty(r + 2 * (1 - d) * s, c + 2 * d * s, fim)
+            self.water_bottom(r + 2 * (1 - d) * s, c + 2 * d * s)
+        elif self.get_value(
+            r + 2 * (1 - d) * s, c + 2 * d * s
+        ).lower() == "m" and self.is_water_or_oob(
+            r + 4 * (1 - d) * s, c + 4 * d * s
+        ):
+            # COURAÇADO (4 CELULAS)
+            self.set_if_empty(r + 3 * (1 - d) * s, c + 3 * d * s, fim)
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
+            self.water_bottom(r + 3 * (1 - d) * s, c + 3 * d * s)
+
+    def inferences_top(self, r, c):
+        self.inferences_template(r, c, "t")
+
+    def inferences_bottom(self, r, c):
+        self.inferences_template(r, c, "b")
+
+    def inferences_left(self, r, c):
+        self.inferences_template(r, c, "l")
+
+    def inferences_right(self, r, c):
+        self.inferences_template(r, c, "r")
 
     def inferences(self):
         for r in range(10):
@@ -120,190 +240,17 @@ class Board:
                     self.water_if_empty(i, r)
 
             for c in range(10):
-                if self.get_value(r, c).lower() == "m":
-                    if r == 0:
-                        self.water_if_empty(r + 1, c)
-                    elif r == 9:
-                        self.water_if_empty(r - 1, c)
-
-                    if c == 0:
-                        self.water_if_empty(r, c + 1)
-                    elif c == 9:
-                        self.water_if_empty(r, c - 1)
-
-                    (above, below) = self.adjacent_vertical_values(r, c)
-                    (left, right) = self.adjacent_horizontal_values(r, c)
-                    if self.ship_cells_in_row(r) + 2 > self.count_row[r] and not (
-                        left.lower() == "l"
-                        or right.lower() == "r"
-                        or "m" in {left.lower(), right.lower()}
-                    ):
-                        self.water_if_empty(r, c - 1)
-                        self.water_if_empty(r, c + 1)
-                    elif self.ship_cells_in_column(c) + 2 > self.count_column[c] and not (
-                        above.lower() == "t"
-                        or below.lower() == "b"
-                        or "m" in {above.lower(), below.lower()}
-                    ):
-                        self.water_if_empty(r - 1, c)
-                        self.water_if_empty(r + 1, c)
-                    elif self.ship_cells_in_row(r) + 1 == self.count_row[r]:
-                        if (
-                            left.lower() == "l"
-                            and self.get_value(r, c + 2).lower() != "r"
-                        ):
-                            self.set_if_empty(r, c + 1, "r")
-                        elif (
-                            right.lower() == "r"
-                            and self.get_value(r, c - 2).lower() != "l"
-                        ):
-                            self.set_if_empty(r, c - 1, "l")
-                    elif self.ship_cells_in_column(c) + 1 == self.count_column[c]:
-                        if (
-                            above.lower() == "t"
-                            and self.get_value(r + 2, c).lower() != "b"
-                        ):
-                            self.set_if_empty(r + 1, c, "b")
-                        elif (
-                            below.lower() == "b"
-                            and self.get_value(r - 2, c).lower() != "t"
-                        ):
-                            self.set_if_empty(r - 1, c, "t")
-
-                    if self.is_water(r, c - 1) or self.is_water(r, c + 1):
-                        if self.is_water_or_oob(r - 2, c):
-                            self.set_if_empty(r - 1, c, "t")
-                        if self.is_water_or_oob(r + 2, c):
-                            self.set_if_empty(r + 1, c, "b")
-                    elif self.is_water(r - 1, c) or self.is_water(r + 1, c):
-                        if self.is_water_or_oob(r, c - 2):
-                            self.set_if_empty(r, c - 1, "l")
-                        if self.is_water_or_oob(r, c + 2):
-                            self.set_if_empty(r, c + 1, "r")
-
-                elif self.get_value(r, c).lower() == "t":
-                    if self.is_water_or_oob(r + 2, c):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r + 1, c, "b")
-                    elif self.ship_cells_in_column(c) + 1 == self.count_column[
-                        c
-                    ] and not self.ship_in_cell(r + 2, c):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r + 1, c, "b")
-                    elif self.get_value(r + 3, c).lower() == "m":
-                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
-                        self.water_if_empty(r + 2, c)
-                        self.water_if_empty(r + 4, c)
-                        self.set_if_empty(r + 1, c, "b")
-                    elif self.get_value(r + 2, c).lower() == "b":
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r + 1, c, "m")
-                    elif self.get_value(
-                        r + 1, c
-                    ).lower() == "m" and self.is_water_or_oob(r + 3, c):
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r + 2, c, "b")
-                        self.water_bottom(r + 2, c)
-                    elif self.get_value(
-                        r + 2, c
-                    ).lower() == "m" and self.is_water_or_oob(r + 4, c):
-                        # COURAÇADO (4 CELULAS)
-                        self.set_if_empty(r + 3, c, "b")
-                        self.set_if_empty(r + 1, c, "m")
-                        self.water_bottom(r + 3, c)
-
-                elif self.get_value(r, c).lower() == "b":
-                    if self.is_water_or_oob(r - 2, c):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r - 1, c, "t")
-                    elif self.ship_cells_in_column(c) + 1 == self.count_column[
-                        c
-                    ] and not self.ship_in_cell(r - 2, c):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r - 1, c, "t")
-                    elif self.get_value(r - 3, c).lower() == "m":
-                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
-                        self.water_if_empty(r - 2, c)
-                        self.water_if_empty(r - 4, c)
-                        self.set_if_empty(r - 1, c, "t")
-                    elif self.get_value(r - 2, c).lower() == "t":
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r - 1, c, "m")
-                    elif self.get_value(
-                        r - 1, c
-                    ).lower() == "m" and self.is_water_or_oob(r - 3, c):
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r - 2, c, "t")
-                        self.water_top(r - 2, c)
-                    elif self.get_value(
-                        r - 2, c
-                    ).lower() == "m" and self.is_water_or_oob(r - 4, c):
-                        # COURAÇADO (4 CELULAS)
-                        self.set_if_empty(r - 3, c, "t")
-                        self.set_if_empty(r - 1, c, "m")
-                        self.water_top(r - 3, c)
-
-                elif self.get_value(r, c).lower() == "l":
-                    if self.is_water_or_oob(r, c + 2):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r, c + 1, "r")
-                    elif self.ship_cells_in_row(r) + 1 == self.count_row[
-                        r
-                    ] and not self.ship_in_cell(r, c + 2):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r, c + 1, "r")
-                    elif self.get_value(r, c + 3).lower() == "m":
-                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
-                        self.water_if_empty(r, c + 2)
-                        self.water_if_empty(r, c + 4)
-                        self.set_if_empty(r, c + 1, "r")
-                    elif self.get_value(r, c + 2).lower() == "r":
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r, c + 1, "m")
-                    elif self.get_value(
-                        r, c + 1
-                    ).lower() == "m" and self.is_water_or_oob(r, c + 3):
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r, c + 2, "r")
-                        self.water_right(r, c + 2)
-                    elif self.get_value(
-                        r, c + 2
-                    ).lower() == "m" and self.is_water_or_oob(r, c + 4):
-                        # COURAÇADO (4 CELULAS)
-                        self.set_if_empty(r, c + 3, "r")
-                        self.set_if_empty(r, c + 1, "m")
-                        self.water_right(r, c + 3)
-
-                elif self.get_value(r, c).lower() == "r":
-                    if self.is_water_or_oob(r, c - 2):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r, c - 1, "l")
-                    elif self.ship_cells_in_row(r) + 1 == self.count_row[
-                        r
-                    ] and not self.ship_in_cell(r, c - 2):
-                        # CONTRATORPEDEIRO (2 CELULAS)
-                        self.set_if_empty(r, c - 1, "l")
-                    elif self.get_value(r, c - 3).lower() == "m":
-                        # CONTRATORPEDEIRO (2 CELULAS) e OUTRO NAVIO
-                        self.water_if_empty(r, c - 2)
-                        self.water_if_empty(r, c - 4)
-                        self.set_if_empty(r, c - 1, "l")
-                    elif self.get_value(r, c - 2).lower() == "r":
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r, c - 1, "m")
-                    elif self.get_value(
-                        r, c - 1
-                    ).lower() == "m" and self.is_water_or_oob(r, c - 3):
-                        # CRUZADOR (3 CELULAS)
-                        self.set_if_empty(r, c - 2, "l")
-                        self.water_left(r, c - 2)
-                    elif self.get_value(
-                        r, c - 2
-                    ).lower() == "m" and self.is_water_or_oob(r, c - 4):
-                        # COURAÇADO (4 CELULAS)
-                        self.set_if_empty(r, c - 3, "l")
-                        self.set_if_empty(r, c - 1, "m")
-                        self.water_left(r, c - 3)
+                v = self.get_value(r, c).lower()
+                if v == "m":
+                    self.inferences_middle(r, c)
+                elif v == "t":
+                    self.inferences_top(r, c)
+                elif v == "b":
+                    self.inferences_bottom(r, c)
+                elif v == "l":
+                    self.inferences_left(r, c)
+                elif v == "r":
+                    self.inferences_right(r, c)
         self.water_fill()
 
     @staticmethod
@@ -611,19 +558,20 @@ class Board:
     def water_fill(self):
         for r in range(self.grid.shape[0]):
             for c in range(self.grid.shape[1]):
-                if self.get_value(r, c).lower() == "w":
+                v = self.get_value(r, c).lower()
+                if v == "w":
                     pass
-                elif self.get_value(r, c).lower() == "c":
+                elif v == "c":
                     self.water_circle(r, c)
-                elif self.get_value(r, c).lower() == "t":
+                elif v == "t":
                     self.water_top(r, c)
-                elif self.get_value(r, c).lower() == "m":
+                elif v == "m":
                     self.water_middle(r, c)
-                elif self.get_value(r, c).lower() == "b":
+                elif v == "b":
                     self.water_bottom(r, c)
-                elif self.get_value(r, c).lower() == "l":
+                elif v == "l":
                     self.water_left(r, c)
-                elif self.get_value(r, c).lower() == "r":
+                elif v == "r":
                     self.water_right(r, c)
 
     def check_diagonals(self, r, c) -> bool:
@@ -648,15 +596,14 @@ class Board:
                 self.ship_in_cell(r, c - 1) or self.ship_in_cell(r, c + 1)
             )
         return False
-    
+
     def empty_cells(self) -> int:
         count = 0
         for r in range(10):
             for c in range(10):
-                if self.get_value(r,c) == "":
+                if self.grid[r, c] == "":
                     count += 1
         return count
-                
 
     def ship_cells_in_row(self, r) -> int:
         count = 0
@@ -727,12 +674,12 @@ class Board:
 
                 existe = True
                 for i in range(size):
-                    cell = self.get_value(r, c + i)
+                    cell = self.get_value(r, c + i).lower()
 
-                    if cell.lower() == "c":
+                    if cell == "c":
                         return False
 
-                    if self.is_water(r, c + i):
+                    if self.is_water_value(cell):
                         Board.debug_action_checks(r, c, size, direction, "Agua")
                         return False
 
@@ -742,7 +689,7 @@ class Board:
                         )
                         return False
 
-                    if cell.lower() == "r" and i < size - 1:
+                    if cell == "r" and i < size - 1:
                         Board.debug_action_checks(
                             r,
                             c,
@@ -752,25 +699,25 @@ class Board:
                         )
                         return False
 
-                    if cell.lower() == "l" and i > 0:
+                    if cell == "l" and i > 0:
                         Board.debug_action_checks(
                             r, c, size, direction, f"Overlap na posição {r} {c + i}"
                         )
                         return False
 
-                    if cell.lower() in {"t", "b"}:
+                    if cell in {"t", "b"}:
                         Board.debug_action_checks(
                             r, c, size, direction, f"Overlap na posição {r + i} {c}"
                         )
                         return False
 
-                    if cell.lower() == "m" and (i < 1 or i == size - 1):
+                    if cell == "m" and (i < 1 or i == size - 1):
                         Board.debug_action_checks(
                             r, c, size, direction, "M no inicio ou fim"
                         )
                         return False
 
-                    if not self.ship_in_cell(r, c + i):
+                    if not self.ship_in_cell_value(cell):
                         existe = False
                 if existe:
                     return False
@@ -793,9 +740,9 @@ class Board:
 
                 existe = True
                 for i in range(size):
-                    cell = self.get_value(r + i, c)
+                    cell = self.get_value(r + i, c).lower()
 
-                    if cell.lower() == "c":
+                    if cell == "c":
                         return False
 
                     if not self.check_diagonals(r + i, c):
@@ -804,11 +751,11 @@ class Board:
                         )
                         return False
 
-                    if self.is_water(r + i, c):
+                    if self.is_water_value(cell):
                         Board.debug_action_checks(r, c, size, direction, "Agua")
                         return False
 
-                    if cell.lower() == "b" and i < size - 1:
+                    if cell == "b" and i < size - 1:
                         Board.debug_action_checks(
                             r,
                             c,
@@ -818,25 +765,25 @@ class Board:
                         )
                         return False
 
-                    if cell.lower() == "t" and i > 0:
+                    if cell == "t" and i > 0:
                         Board.debug_action_checks(
                             r, c, size, direction, f"Overlap na posição {r + i} {c}"
                         )
                         return False
 
-                    if cell.lower() == "m" and (i < 1 or i == size - 1):
+                    if cell == "m" and (i < 1 or i == size - 1):
                         Board.debug_action_checks(
                             r, c, size, direction, "M no inicio ou fim"
                         )
                         return False
 
-                    if cell.lower() in {"l", "r"}:
+                    if cell in {"l", "r"}:
                         Board.debug_action_checks(
                             r, c, size, direction, f"Overlap na posição {r + i} {c}"
                         )
                         return False
 
-                    if not self.ship_in_cell(r + i, c):
+                    if not self.ship_in_cell_value(cell):
                         existe = False
                 if existe:
                     Board.debug_action_checks(
@@ -870,7 +817,7 @@ class Board:
     def print(self):
         for r in range(10):
             for c in range(10):
-                print(self.get_value(r, c), end="", sep="")
+                print(self.grid[r, c], end="", sep="")
             print("")
 
     def __eq__(self, other):
@@ -910,7 +857,7 @@ class Bimaru(Problem):
         if not state.board.valid_board():
             return []
 
-        a = np.empty(100, (int,4))
+        a = np.empty(100, (np.byte, 4))
         s = -1
         n_actions = 0
 
@@ -928,14 +875,22 @@ class Bimaru(Problem):
                         if state.board.check_action(r, c, s, d):
                             n_actions += 1
                             even = 1 - (n_actions % 2)
-                            i = 50 + int(even*(n_actions/2)) - int(np.floor((not even)*n_actions/2))
-                            a[i] = np.array([r, c, s, d])
+                            i = (
+                                50
+                                + int(even * (n_actions / 2))
+                                - int(np.floor((not even) * n_actions / 2))
+                            )
+                            a[i] = np.array([r, c, s, d], np.byte)
                     else:
                         if state.board.check_action(r, c, s, 0):
                             n_actions += 1
                             even = 1 - (n_actions % 2)
-                            i = 50 + int(even*(n_actions/2)) - int(np.floor((not even)*n_actions/2))
-                            a[i] = np.array([r, c, s, 0])
+                            i = (
+                                50
+                                + int(even * (n_actions / 2))
+                                - int(np.floor((not even) * n_actions / 2))
+                            )
+                            a[i] = np.array([r, c, s, 0], np.byte)
                         break
 
         if state.board.ships[s - 1] + n_actions < 5 - s:
@@ -945,9 +900,10 @@ class Bimaru(Problem):
             # As ações têm de ser mutuamente compatíveis, pelo que só
             # vale a pena seguir um ramo (se forem, aparecerão no filho)
             return [a[50]]
-        
-        #print(50 - int(np.ceil(n_actions/2 - 1)), 50 + int(np.floor(n_actions/2) + 1), n_actions)
-        return a[50 - int(np.ceil(n_actions/2 - 1)): 50 + int(np.floor(n_actions/2)) + 1].tolist()
+
+        return a[
+            50 - int(np.ceil(n_actions / 2 - 1)) : 50 + int(np.floor(n_actions / 2)) + 1
+        ].tolist()
 
     def result(self, state: BimaruState, action: Action) -> BimaruState:
         """Retorna o estado resultante de executar a 'action' sobre
@@ -1016,7 +972,14 @@ class Bimaru(Problem):
         """Função heuristica utilizada para a procura A*."""
         ships = node.state.board.ships
         if node.state.n_actions != 0:
-            return float(node.state.board.empty_cells()) + 10 - ships[0] - ships[1]*2 - ships[2]*3 - ships[3]*4
+            return (
+                float(node.state.board.empty_cells())
+                + 10
+                - ships[0]
+                - ships[1] * 2
+                - ships[2] * 3
+                - ships[3] * 4
+            )
         else:
             return 999
 
