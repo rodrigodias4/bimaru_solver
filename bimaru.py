@@ -202,17 +202,13 @@ class Board:
             self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
         elif self.get_value(
             r + 1 * (1 - d) * s, c + 1 * d * s
-        ).lower() == "m" and self.is_water_or_oob(
-            r + 3 * (1 - d) * s, c + 3 * d * s
-        ):
+        ).lower() == "m" and self.is_water_or_oob(r + 3 * (1 - d) * s, c + 3 * d * s):
             # CRUZADOR (3 CELULAS)
             self.set_if_empty(r + 2 * (1 - d) * s, c + 2 * d * s, fim)
             self.water_bottom(r + 2 * (1 - d) * s, c + 2 * d * s)
         elif self.get_value(
             r + 2 * (1 - d) * s, c + 2 * d * s
-        ).lower() == "m" and self.is_water_or_oob(
-            r + 4 * (1 - d) * s, c + 4 * d * s
-        ):
+        ).lower() == "m" and self.is_water_or_oob(r + 4 * (1 - d) * s, c + 4 * d * s):
             # COURAÇADO (4 CELULAS)
             self.set_if_empty(r + 3 * (1 - d) * s, c + 3 * d * s, fim)
             self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
@@ -630,6 +626,155 @@ class Board:
                 count += 1
         return count
 
+    def check_action_size_one(self, r: int, c: int) -> bool:
+        if (
+            self.ship_in_cell(r - 1, c)
+            or self.ship_in_cell(r + 1, c)
+            or self.ship_in_cell(r, c - 1)
+            or self.ship_in_cell(r, c + 1)
+            or not self.check_diagonals(r, c)
+            or self.ship_in_cell(r, c)
+            or self.is_water(r, c)
+            or self.ship_cells_in_row(r) + 1 > self.count_row[r]
+            or self.ship_cells_in_column(c) + 1 > self.count_column[c]
+        ):
+            return False
+        else:
+            return True
+
+    def check_action_horizontal(self, r: int, c: int, size: int) -> bool:
+        new_count = (
+            self.ship_cells_in_row(r)
+            + size
+            - self.cells_existing_in_new_ship(r, c, size, HORIZONTAL)
+        )
+        if new_count > self.count_row[r]:
+            Board.debug_action_checks(
+                r, c, size, HORIZONTAL, f"Linha excederia ajudas ({new_count})"
+            )
+            return False
+
+        if self.ship_in_cell(r, c - 1) or self.ship_in_cell(r, c + size):
+            Board.debug_action_checks(r, c, size, HORIZONTAL, "Navio na ponta")
+            return False
+
+        existe = True
+        for i in range(size):
+            cell = self.get_value(r, c + i).lower()
+
+            if cell == "c":
+                Board.debug_action_checks(r, c, size, HORIZONTAL, "C")
+                return False
+            elif self.is_water_value(cell):
+                Board.debug_action_checks(r, c, size, HORIZONTAL, "Agua")
+                return False
+
+            if not self.check_diagonals(r, c + i):
+                Board.debug_action_checks(
+                    r, c, size, HORIZONTAL, "Diagonais contêm navio"
+                )
+                return False
+
+            if cell == "r" and i < size - 1:
+                Board.debug_action_checks(
+                    r,
+                    c,
+                    size,
+                    HORIZONTAL,
+                    "Navio chega ao fim antes do tamanho especificado pela função",
+                )
+                return False
+
+            if cell == "l" and i > 0:
+                Board.debug_action_checks(
+                    r, c, size, HORIZONTAL, f"Overlap na posição {r} {c + i}"
+                )
+                return False
+
+            if cell in {"t", "b"}:
+                Board.debug_action_checks(
+                    r, c, size, HORIZONTAL, f"Overlap na posição {r + i} {c}"
+                )
+                return False
+
+            if cell == "m" and (i < 1 or i == size - 1):
+                Board.debug_action_checks(r, c, size, HORIZONTAL, "M no inicio ou fim")
+                return False
+
+            if not self.ship_in_cell_value(cell):
+                existe = False
+        if existe:
+            Board.debug_action_checks(r, c, size, HORIZONTAL, "Navio total pelas hints")
+            return False
+        return True
+
+    def check_action_vertical(self, r: int, c: int, size: int) -> bool:
+        new_count = (
+            self.ship_cells_in_column(c)
+            + size
+            - self.cells_existing_in_new_ship(r, c, size, VERTICAL)
+        )
+        if new_count > self.count_column[c]:
+            Board.debug_action_checks(
+                r, c, size, VERTICAL, f"Coluna excederia ajudas ({new_count})"
+            )
+            return False
+
+        if self.ship_in_cell(r - 1, c) or self.ship_in_cell(r + size, c):
+            Board.debug_action_checks(r, c, size, VERTICAL, "Navio na ponta")
+            return False
+
+        existe = True
+        for i in range(size):
+            cell = self.get_value(r + i, c).lower()
+
+            if cell == "c":
+                Board.debug_action_checks(r, c, size, VERTICAL, "C")
+                return False
+
+            if not self.check_diagonals(r + i, c):
+                Board.debug_action_checks(
+                    r, c, size, VERTICAL, "Diagonais contêm navio"
+                )
+                return False
+
+            if self.is_water_value(cell):
+                Board.debug_action_checks(r, c, size, VERTICAL, "Agua")
+                return False
+
+            if cell == "b" and i < size - 1:
+                Board.debug_action_checks(
+                    r,
+                    c,
+                    size,
+                    VERTICAL,
+                    "Navio chega ao fim antes do tamanho especificado pela função",
+                )
+                return False
+
+            if cell == "t" and i > 0:
+                Board.debug_action_checks(
+                    r, c, size, VERTICAL, f"Overlap na posição {r + i} {c}"
+                )
+                return False
+
+            if cell == "m" and (i < 1 or i == size - 1):
+                Board.debug_action_checks(r, c, size, VERTICAL, "M no inicio ou fim")
+                return False
+
+            if cell in {"l", "r"}:
+                Board.debug_action_checks(
+                    r, c, size, VERTICAL, f"Overlap na posição {r + i} {c}"
+                )
+                return False
+
+            if not self.ship_in_cell_value(cell):
+                existe = False
+        if existe:
+            Board.debug_action_checks(r, c, size, VERTICAL, "Navio total pelas hints")
+            return False
+        return True
+
     def check_action(self, r: int, c: int, size: int, direction: bool) -> bool:
         if self.ships[size - 1] >= 5 - size:
             Board.debug_action_checks(
@@ -641,155 +786,16 @@ class Board:
             r + (size - 1) * (1 - direction), c + (size - 1) * (direction)
         ):
             if size == 1:
-                if (
-                    self.ship_in_cell(r - 1, c)
-                    or self.ship_in_cell(r + 1, c)
-                    or self.ship_in_cell(r, c - 1)
-                    or self.ship_in_cell(r, c + 1)
-                    or not self.check_diagonals(r, c)
-                    or self.ship_in_cell(r, c)
-                    or self.is_water(r, c)
-                    or self.ship_cells_in_row(r) + 1 > self.count_row[r]
-                    or self.ship_cells_in_column(c) + 1 > self.count_column[c]
-                ):
-                    return False
-                else:
-                    return True
+                return self.check_action_size_one(r, c)
 
             if direction == HORIZONTAL:
-                new_count = (
-                    self.ship_cells_in_row(r)
-                    + size
-                    - self.cells_existing_in_new_ship(r, c, size, direction)
-                )
-                if new_count > self.count_row[r]:
-                    Board.debug_action_checks(
-                        r, c, size, direction, f"Linha excederia ajudas ({new_count})"
-                    )
+                if not self.check_action_horizontal(r, c, size):
                     return False
-
-                if self.ship_in_cell(r, c - 1) or self.ship_in_cell(r, c + size):
-                    Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
-                    return False
-
-                existe = True
-                for i in range(size):
-                    cell = self.get_value(r, c + i).lower()
-
-                    if cell == "c":
-                        return False
-
-                    if self.is_water_value(cell):
-                        Board.debug_action_checks(r, c, size, direction, "Agua")
-                        return False
-
-                    if not self.check_diagonals(r, c + i):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "Diagonais contêm navio"
-                        )
-                        return False
-
-                    if cell == "r" and i < size - 1:
-                        Board.debug_action_checks(
-                            r,
-                            c,
-                            size,
-                            direction,
-                            "Navio chega ao fim antes do tamanho especificado pela função",
-                        )
-                        return False
-
-                    if cell == "l" and i > 0:
-                        Board.debug_action_checks(
-                            r, c, size, direction, f"Overlap na posição {r} {c + i}"
-                        )
-                        return False
-
-                    if cell in {"t", "b"}:
-                        Board.debug_action_checks(
-                            r, c, size, direction, f"Overlap na posição {r + i} {c}"
-                        )
-                        return False
-
-                    if cell == "m" and (i < 1 or i == size - 1):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "M no inicio ou fim"
-                        )
-                        return False
-
-                    if not self.ship_in_cell_value(cell):
-                        existe = False
-                if existe:
-                    return False
-
             elif direction == VERTICAL:
-                new_count = (
-                    self.ship_cells_in_column(c)
-                    + size
-                    - self.cells_existing_in_new_ship(r, c, size, direction)
-                )
-                if new_count > self.count_column[c]:
-                    Board.debug_action_checks(
-                        r, c, size, direction, f"Coluna excederia ajudas ({new_count})"
-                    )
+                if not self.check_action_vertical(r, c, size):
                     return False
 
-                if self.ship_in_cell(r - 1, c) or self.ship_in_cell(r + size, c):
-                    Board.debug_action_checks(r, c, size, direction, "Navio adjacente")
-                    return False
-
-                existe = True
-                for i in range(size):
-                    cell = self.get_value(r + i, c).lower()
-
-                    if cell == "c":
-                        return False
-
-                    if not self.check_diagonals(r + i, c):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "Diagonais contêm navio"
-                        )
-                        return False
-
-                    if self.is_water_value(cell):
-                        Board.debug_action_checks(r, c, size, direction, "Agua")
-                        return False
-
-                    if cell == "b" and i < size - 1:
-                        Board.debug_action_checks(
-                            r,
-                            c,
-                            size,
-                            direction,
-                            "Navio chega ao fim antes do tamanho especificado pela função",
-                        )
-                        return False
-
-                    if cell == "t" and i > 0:
-                        Board.debug_action_checks(
-                            r, c, size, direction, f"Overlap na posição {r + i} {c}"
-                        )
-                        return False
-
-                    if cell == "m" and (i < 1 or i == size - 1):
-                        Board.debug_action_checks(
-                            r, c, size, direction, "M no inicio ou fim"
-                        )
-                        return False
-
-                    if cell in {"l", "r"}:
-                        Board.debug_action_checks(
-                            r, c, size, direction, f"Overlap na posição {r + i} {c}"
-                        )
-                        return False
-
-                    if not self.ship_in_cell_value(cell):
-                        existe = False
-                if existe:
-                    Board.debug_action_checks(
-                        r, c, size, direction, "Navio total pelas hints"
-                    )
-                    return False
+            Board.debug_action_checks(r, c, size, direction, "AÇÃO VÁLIDA")
             return True
 
         Board.debug_action_checks(r, c, size, direction, "Out of bounds")
