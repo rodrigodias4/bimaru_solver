@@ -406,19 +406,19 @@ class Board:
                 v = self.get_value(r, c).lower()
                 if v == "t":
                     temp = self.get_value(r + 1, c).lower()
-                    if temp not in {"m", "b"}:
+                    if temp not in {"m", "b"}:  # T isolado
                         return False
                 elif v == "b":
                     temp = self.get_value(r - 1, c).lower()
-                    if temp not in {"m", "t"}:
+                    if temp not in {"m", "t"}:  # B isolado
                         return False
                 elif v == "l":
                     temp = self.get_value(r, c + 1).lower()
-                    if temp not in {"m", "r"}:
+                    if temp not in {"m", "r"}:  # L isolado
                         return False
                 elif v == "r":
                     temp = self.get_value(r, c - 1).lower()
-                    if temp not in {"m", "l"}:
+                    if temp not in {"m", "l"}:  # R isolado
                         return False
                 elif v == "m":
                     adjacent_to_m = (
