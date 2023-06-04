@@ -26,19 +26,21 @@ A_SIZE = 2
 A_DIR = 3
 DEBUG_LEVEL = D_NONE
 
+
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
+
+    # Variáveis estáticas, já que todos os tabuleiros
+    # têm as mesmas dicas
+    count_row: np.ndarray
+    count_column: np.ndarray
 
     def __init__(
         self,
         grid: np.ndarray,
         ships: np.ndarray,
-        count_row: np.ndarray,
-        count_column: np.ndarray,
     ):
         self.grid = grid
-        self.count_row = count_row
-        self.count_column = count_column
         self.ships = ships
 
     def get_value(self, row: int, col: int) -> str:
@@ -47,10 +49,13 @@ class Board:
             return ""
         return self.grid[row, col]
 
-    def is_water(self, r, c) -> bool:
+    @staticmethod
+    def within_bounds(r: np.byte, c: np.byte) -> bool:
+        """Retorna se (r,c) é uma posição válida"""
+        return 0 <= r < 10 and 0 <= c < 10
+
+    def is_water(self, r: np.byte, c: np.byte) -> bool:
         """Retorna true se a célula contém água"""
-        if not Board.within_bounds(r, c):
-            return False
         v = self.get_value(r, c)
         return v in {".", "W"}
 
@@ -58,17 +63,25 @@ class Board:
         """Retorna true se a string v corresponde a água"""
         return v in {".", "W"}
 
+    def is_water_or_oob(self, r: np.byte, c: np.byte):
+        """Verifica se a célula é água ou está fora dos limites"""
+        return not Board.within_bounds(r, c) or self.is_water(r, c)
+
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         above = "None"
         below = "None"
+
         if Board.within_bounds(row - 1, col):
-            if self.get_value(row - 1, col) != "":
-                above = self.get_value(row - 1, col)
+            v = self.get_value(row - 1, col)
+            if v != "":
+                above = v
         if Board.within_bounds(row + 1, col):
-            if self.get_value(row + 1, col) != "":
-                below = self.get_value(row + 1, col)
+            v = self.get_value(row + 1, col)
+            if v != "":
+                below = v
+
         return (above, below)
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
@@ -76,36 +89,39 @@ class Board:
         respectivamente."""
         left = "None"
         right = "None"
+
         if Board.within_bounds(row, col - 1):
-            if self.get_value(row, col - 1) != "":
-                left = self.get_value(row, col - 1)
+            v = self.get_value(row, col - 1)
+            if v != "":
+                left = v
         if Board.within_bounds(row, col + 1):
-            if self.get_value(row, col + 1) != "":
-                right = self.get_value(row, col + 1)
+            v = self.get_value(row, col + 1)
+            if v != "":
+                right = v
+
         return (left, right)
 
-    def is_water_or_oob(self, r: int, c: int):
-        """Verifica se a célula é água ou está fora dos limites"""
-        if not Board.within_bounds(r, c):
-            return True
+    def ship_in_cell(self, r: np.byte, c: np.byte) -> bool:
+        """Retorna se existe um navio na célula"""
+        temp = self.get_value(r, c)
+        return temp not in {"", ".", "None", "W"}
 
-        if self.is_water(r, c):
-            return True
-        return False
+    @staticmethod
+    def is_ship(v: str) -> bool:
+        """Retorna se v corresponde a um navio"""
+        return v not in {"", ".", "None", "W"}
 
-    def water_if_empty(self, r: int, c: int):
+    def water_if_empty(self, r: np.byte, c: np.byte):
         """Coloca água na célula se esta estiver vazia"""
-        if Board.within_bounds(r, c):
-            if self.grid[r, c] == "":
-                self.grid[r, c] = "."
+        self.set_if_empty(r, c, ".")
 
-    def set_if_empty(self, r: int, c: int, value: str):
+    def set_if_empty(self, r: np.byte, c: np.byte, value: str):
         """Coloca o valor indicado na célula se esta estiver vazia"""
         if Board.within_bounds(r, c):
             if self.grid[r, c] == "":
                 self.grid[r, c] = value
 
-    def inferences_middle(self, r, c):
+    def inferences_middle(self, r: np.byte, c: np.byte):
         """Inferências para uma célula que contém m"""
         # M numa linha/coluna inicial ou final corresponde
         # a um navio paralelo a essa borda do tabuleiro
@@ -113,7 +129,7 @@ class Board:
             self.water_if_empty(r + 1, c)
         elif r == 9:
             self.water_if_empty(r - 1, c)
-        elif c == 0:
+        if c == 0:
             self.water_if_empty(r, c + 1)
         elif c == 9:
             self.water_if_empty(r, c - 1)
@@ -155,12 +171,22 @@ class Board:
             elif below == "b" and self.get_value(r - 2, c).lower() != "t":
                 self.set_if_empty(r - 1, c, "t")
 
+        if left == "m":
+            # MM[] -> MMr
+            self.set_if_empty(r, c + 1, "r")
+        elif right == "m":
+            self.set_if_empty(r, c - 1, "l")
+        if above == "m":
+            self.set_if_empty(r + 1, c, "b")
+        elif below == "m":
+            self.set_if_empty(r - 1, c, "t")
+
         # Água adjacente a M significa que o navio tem de ser
         # perpendicular à posição da água
         if self.is_water(r, c - 1) or self.is_water(r, c + 1):
             if self.is_water_or_oob(r - 2, c):
                 # .    .
-                # t -> t
+                #   -> t
                 # M    M
                 self.set_if_empty(r - 1, c, "t")
             if self.is_water_or_oob(r + 2, c):
@@ -177,30 +203,36 @@ class Board:
             self.water_if_empty(r - 1, c)
             self.water_if_empty(r + 1, c)
 
-    def inferences_template(self, r, c, inicio):
-        """Abstrai as inferências de T, B, L e R a uma função,
-        de modo a reduzir a extensão do código
-        op: valor da ponta oposta do navio
-        s: sentido"""
-        inicio = inicio.lower()
-        if inicio == "t":
+    def inferences_aux(self, v: str) -> (np.byte, bool, np.byte):
+        if v == "t":
             op = "b"
             d = VERTICAL
             s = 1
-        elif inicio == "b":
+        elif v == "b":
             op = "t"
             d = VERTICAL
             s = -1
-        elif inicio == "l":
+        elif v == "l":
             op = "r"
             d = HORIZONTAL
             s = 1
-        elif inicio == "r":
+        elif v == "r":
             op = "l"
             d = HORIZONTAL
             s = -1
         else:
             return
+
+        return (op, d, s)
+
+    def inferences_template(self, r: np.byte, c: np.byte, v):
+        """Abstrai as inferências de T, B, L e R a uma função,
+        de modo a reduzir a extensão do código
+        op: valor da ponta oposta do navio
+        d: direção
+        s: sentido"""
+        v = v.lower()
+        (op, d, s) = self.inferences_aux(v)
 
         if self.is_water_or_oob(r + 2 * (1 - d) * s, c + 2 * d * s):
             # CONTRATORPEDEIRO (2 CELULAS) | L[]. -> Lr.
@@ -230,33 +262,32 @@ class Board:
         elif self.get_value(
             r + 2 * (1 - d) * s, c + 2 * d * s
         ).lower() == "m" and self.is_water_or_oob(r + 4 * (1 - d) * s, c + 4 * d * s):
-            # COURAÇADO (4 CELULAS)
+            # COURAÇADO (4 CELULAS) | L[]M[]. -> LmMr
             self.set_if_empty(r + 3 * (1 - d) * s, c + 3 * d * s, op)
             self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
+        elif self.get_value(r + 3 * (1 - d) * s, c + 3 * d * s) == op:
+            # COURAÇADO (4 CELULAS) | L[][]R -> LmmR
+            self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, "m")
+            self.set_if_empty(r + 2 * (1 - d) * s, c + 2 * d * s, "m")
 
-    def inferences_top(self, r, c):
+    def inferences_top(self, r: np.byte, c: np.byte):
         self.inferences_template(r, c, "t")
 
-    def inferences_bottom(self, r, c):
+    def inferences_bottom(self, r: np.byte, c: np.byte):
         self.inferences_template(r, c, "b")
 
-    def inferences_left(self, r, c):
+    def inferences_left(self, r: np.byte, c: np.byte):
         self.inferences_template(r, c, "l")
 
-    def inferences_right(self, r, c):
+    def inferences_right(self, r: np.byte, c: np.byte):
         self.inferences_template(r, c, "r")
 
     def inferences(self):
         """Infere navios obrigatórios e linhas cheias
         com base no tabuleiro atual e hints"""
-        for r in range(10):
-            if self.ship_cells_in_row(r) == self.count_row[r]:
-                for i in range(10):
-                    self.water_if_empty(r, i)
-            if self.ship_cells_in_column(r) == self.count_column[r]:
-                for i in range(10):
-                    self.water_if_empty(i, r)
+        self.inferences_water_full_lines()
 
+        for r in range(10):
             for c in range(10):
                 v = self.get_value(r, c).lower()
                 if v == "m":
@@ -269,51 +300,78 @@ class Board:
                     self.inferences_left(r, c)
                 elif v == "r":
                     self.inferences_right(r, c)
-        self.water_fill()
+
+        self.water_adjacences()  # Preenche adjacências de navios com água
+        self.inferences_water_full_lines()
+
+    def inferences_water_full_lines(self):
+        """Prenche com água os espaços vazios de linhas/colunas
+        com número de células com navio igual à dica correspondente"""
+        for i in range(10):
+            if self.ship_cells_in_row(i) >= self.count_row[i]:
+                for j in range(10):
+                    self.water_if_empty(i, j)
+            if self.ship_cells_in_column(i) >= self.count_column[i]:
+                for j in range(10):
+                    self.water_if_empty(j, i)
+
+    def water_adjacences(self):
+        """Infere e preenche água em posições adjacentes a navios"""
+        for r in range(10):
+            for c in range(10):
+                v = self.get_value(r, c).lower()
+                if v == "w":
+                    pass
+                elif v == "c":
+                    self.water_circle(r, c)
+                elif v == "t":
+                    self.water_top(r, c)
+                elif v == "m":
+                    self.water_middle(r, c)
+                elif v == "b":
+                    self.water_bottom(r, c)
+                elif v == "l":
+                    self.water_left(r, c)
+                elif v == "r":
+                    self.water_right(r, c)
 
     @staticmethod
     def parse_instance():
         """Retorna um tabuleiro com base no input formatado"""
+
+        # Criação de variáveis do tabuleiro
         initial_grid = np.empty([10, 10], "U1")
-        count_row = np.array(stdin.readline().rstrip("\n").split("\t")[1:], np.byte)
-        count_column = np.array(stdin.readline().rstrip("\n").split("\t")[1:], np.byte)
+        Board.count_row = np.array(
+            stdin.readline().rstrip("\n").split("\t")[1:], np.byte
+        )
+        Board.count_column = np.array(
+            stdin.readline().rstrip("\n").split("\t")[1:], np.byte
+        )
 
-        n_hints = int(stdin.readline().rstrip("\n"))
+        n_hints = int(stdin.readline().rstrip("\n"))  # Número de dicas
 
+        # Lê cada uma das dicas e insere no tabuleiro
         for i in range(n_hints):
             line = stdin.readline().rstrip("\n").split("\t")[1:]
             initial_grid[int(line[0]), int(line[1])] = line[2]
 
-        initial_board = Board(
-            initial_grid, np.zeros(4, np.ubyte), count_row, count_column
-        )
-        initial_board.water_fill()
+        initial_board = Board(initial_grid, np.zeros(4, np.ubyte))
+
+        initial_board.water_adjacences()  # Infere água a partir das dicas
 
         # Infere até não haver mais alterações por inferência
         while True:
             previous_board = Board(
                 np.array(initial_board.grid, "U1"),
                 np.array(initial_board.ships, np.byte),
-                np.array(initial_board.count_row, np.byte),
-                np.array(initial_board.count_column, np.byte),
             )
             initial_board.inferences()
             if initial_board == previous_board:
                 break
 
-        initial_board.ship_count()
-        if DEBUG_LEVEL >= D_MINIMUM:
-            print(initial_board.print_debug())
+        initial_board.ship_count()  # Conta os navios presentes
 
-        if not initial_board.valid_board():
-            sys.exit("Tabuleiro inicial inválido")
-        else:
-            return initial_board
-
-    @staticmethod
-    def within_bounds(r: int, c: int):
-        """Retorna se (r,c) é uma posição válida"""
-        return 0 <= r < 10 and 0 <= c < 10
+        return initial_board
 
     def ship_count(self):
         """Conta os navios presentes manualmente"""
@@ -336,12 +394,13 @@ class Board:
                         vi = self.get_value(r, c + i).lower()
                         if vi == "r":
                             self.ships[i] += 1
+                            c += i
                         if vi != "m":
                             break
 
     def pontas_soltas(self) -> bool:
         """Verifica se existe células preenchidas que não
-        correspondem a um navio (e.g. dicas não usadas)"""
+        correspondem a um navio (i.e. dicas não usadas)"""
         for r in range(10):
             for c in range(10):
                 v = self.get_value(r, c).lower()
@@ -375,6 +434,9 @@ class Board:
                         if DEBUG_LEVEL == D_VERBOSE:
                             print(f"m {r} {c}")
                         return False
+
+        # Verifica se as ajudas de linhas e colunas correspondem
+        # às contagens finais correspondentes
         for i in range(10):
             if self.ship_cells_in_row(i) != self.count_row[i]:
                 return False
@@ -382,96 +444,7 @@ class Board:
                 return False
         return True
 
-    def valid_board(self) -> bool:
-        """Verifica se o tabuleiro atual é válido
-        (mas não necessariamente completo)"""
-        for i in range(4):
-            if self.ships[i] > 4 - i:
-                return False
-
-        for c in range(10):
-            count = self.ship_cells_in_column(c)
-            if count > self.count_column[c]:
-                if DEBUG_LEVEL >= D_VERBOSE:
-                    print(
-                        "valid_board: Column ",
-                        c,
-                        " com mais células com navios (",
-                        count,
-                        ") que as ajudas (",
-                        self.count_column[c],
-                        ")",
-                    )
-                return False
-
-        for r in range(10):
-            count = self.ship_cells_in_row(r)
-            if count > self.count_row[r]:
-                if DEBUG_LEVEL >= D_VERBOSE:
-                    print(
-                        "valid_board: Row ",
-                        r,
-                        " com mais células com navios (",
-                        count,
-                        ") que as ajudas (",
-                        self.count_row[r],
-                        ")",
-                    )
-                return False
-
-            for c in range(10):
-                if self.ship_in_cell(r, c):
-                    if (r, c) in {(0, 0), (0, 9), (9, 0), (9, 9)} and self.get_value(
-                        r, c
-                    ).lower() == "m":
-                        # M no canto não é uma posição válida
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("valid_board: M no canto")
-                        return False
-
-                    if not self.check_diagonals(r, c):
-                        # Diagonais
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("valid_board: Diagonais em ", r, c)
-                            return False
-
-                    v = self.get_value(r, c)
-                    vl = v.lower()
-
-                    if (
-                        (vl == "t" and self.ship_in_cell(r - 1, c))
-                        or (vl == "b" and self.ship_in_cell(r + 1, c))
-                        or (vl == "l" and self.ship_in_cell(r, c - 1))
-                        or (vl == "r" and self.ship_in_cell(r, c + 1))
-                    ):
-                        # Navios seguidos
-                        if DEBUG_LEVEL >= D_VERBOSE:
-                            print("valid_board: Adjacente na ponta em ", r, c)
-                        return False
-
-                    if v in {"T", "B"}:
-                        (left, right) = self.adjacent_horizontal_values(r, c)
-                        if self.is_ship(left) or self.is_ship(right):
-                            if DEBUG_LEVEL >= D_VERBOSE:
-                                print(
-                                    "valid_board: Adjacente perpendicularmente em ",
-                                    r,
-                                    c,
-                                )
-                            return False
-                    elif v in {"L", "R"}:
-                        (above, below) = self.adjacent_vertical_values(r, c)
-                        if self.is_ship(above) or self.is_ship(below):
-                            if DEBUG_LEVEL >= D_VERBOSE:
-                                print(
-                                    "valid_board: Adjacente perpendicularmente em ",
-                                    r,
-                                    c,
-                                )
-                            return False
-        return True
-
-    def water_bottom(self, r, c):
+    def water_bottom(self, r: np.byte, c: np.byte):
         """Figura:
         .       .
         .   B   .
@@ -485,7 +458,7 @@ class Board:
         self.water_if_empty(r + 1, c)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_circle(self, r, c):
+    def water_circle(self, r: np.byte, c: np.byte):
         """Figura:
         .   .   .
         .   C   .
@@ -500,14 +473,14 @@ class Board:
         self.water_if_empty(r + 1, c)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_middle(self, r, c):
+    def water_middle(self, r: np.byte, c: np.byte):
         """Preenche diagonais com água"""
         self.water_if_empty(r - 1, c - 1)
         self.water_if_empty(r + 1, c - 1)
         self.water_if_empty(r - 1, c + 1)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_top(self, r, c):
+    def water_top(self, r: np.byte, c: np.byte):
         """Figura:
         .   .   .
         .   T   .
@@ -521,7 +494,7 @@ class Board:
         self.water_if_empty(r + 1, c - 1)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_left(self, r, c):
+    def water_left(self, r: np.byte, c: np.byte):
         """Figura:
         .   .   .
         .   L
@@ -535,7 +508,7 @@ class Board:
         self.water_if_empty(r + 1, c)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_right(self, r, c):
+    def water_right(self, r: np.byte, c: np.byte):
         """Figura:
         .   .   .
             R   .
@@ -549,17 +522,6 @@ class Board:
         self.water_if_empty(r + 1, c)
         self.water_if_empty(r + 1, c + 1)
 
-    def water_infer_full_lines(self):
-        """Prenche com água os espaços vazios de linhas/colunas
-        com número de células com navio igual à dica correspondente"""
-        for i in range(10):
-            if self.ship_cells_in_row(i) >= self.count_row[i]:
-                for j in range(10):
-                    self.water_if_empty(i, j)
-            if self.ship_cells_in_column(i) >= self.count_column[i]:
-                for j in range(10):
-                    self.water_if_empty(j, i)
-
     def water_all_empty(self):
         """Insere água em todas as posições vazias do tabuleiro"""
         for r in range(10):
@@ -567,53 +529,13 @@ class Board:
                 if self.get_value(r, c) == "":
                     self.grid[r, c] = "."
 
-    def water_fill(self):
-        """Infere e preenche água em posições adjacentes a navios"""
-        for r in range(10):
-            for c in range(10):
-                v = self.get_value(r, c).lower()
-                if v == "w":
-                    pass
-                elif v == "c":
-                    self.water_circle(r, c)
-                elif v == "t":
-                    self.water_top(r, c)
-                elif v == "m":
-                    self.water_middle(r, c)
-                elif v == "b":
-                    self.water_bottom(r, c)
-                elif v == "l":
-                    self.water_left(r, c)
-                elif v == "r":
-                    self.water_right(r, c)
-
-    def check_diagonals(self, r: int, c: int) -> bool:
+    def check_diagonals(self, r: np.byte, c: np.byte) -> bool:
         return not (
             self.ship_in_cell(r - 1, c - 1)
             or self.ship_in_cell(r - 1, c + 1)
             or self.ship_in_cell(r + 1, c - 1)
             or self.ship_in_cell(r + 1, c + 1)
         )
-
-    def ship_in_cell(self, r: int, c: int) -> bool:
-        """Retorna se existe um navio na célula"""
-        temp = self.get_value(r, c)
-        return temp not in {"", ".", "None", "W"}
-
-    @staticmethod
-    def is_ship(v: str) -> bool:
-        """Retorna se v corresponde a um navio"""
-        return v not in {"", ".", "None", "W"}
-
-    def empty_cells(self) -> int:
-        """Conta o número total de células vazias para heurística
-        (inutilizada no final)"""
-        count = 0
-        for r in range(10):
-            for c in range(10):
-                if self.grid[r, c] == "":
-                    count += 1
-        return count
 
     def ship_cells_in_row(self, r) -> int:
         """Conta o número de células com navio na linha"""
@@ -631,7 +553,9 @@ class Board:
                 count += 1
         return count
 
-    def cells_existing_in_new_ship(self, r, c, size, direction) -> int:
+    def cells_existing_in_new_ship(
+        self, r: np.byte, c: np.byte, size, direction
+    ) -> int:
         """Verifica o número de células já ocupadas no navio a inserir"""
         count = 0
         for i in range(size):
@@ -639,7 +563,7 @@ class Board:
                 count += 1
         return count
 
-    def check_action_size_one(self, r: int, c: int) -> bool:
+    def check_action_size_one(self, r: np.byte, c: np.byte) -> bool:
         """Auxiliar de check_action para navios de tamanho 1"""
         if (
             self.ship_in_cell(r - 1, c)
@@ -655,7 +579,7 @@ class Board:
             return False
         return True
 
-    def check_action_horizontal(self, r: int, c: int, size: int) -> bool:
+    def check_action_horizontal(self, r: np.byte, c: np.byte, size: int) -> bool:
         """Auxiliar de check_action para ações horizontais"""
 
         new_count = (
@@ -723,7 +647,7 @@ class Board:
             return False
         return True
 
-    def check_action_vertical(self, r: int, c: int, size: int) -> bool:
+    def check_action_vertical(self, r: np.byte, c: np.byte, size: int) -> bool:
         """Auxiliar de check_action para ações verticais"""
         new_count = (
             self.ship_cells_in_column(c)
@@ -791,7 +715,7 @@ class Board:
             return False
         return True
 
-    def check_action(self, r: int, c: int, size: int, direction: bool) -> bool:
+    def check_action(self, r: np.byte, c: np.byte, size: int, direction: bool) -> bool:
         """Verifica se a ação resulta num tabuleiro válido"""
         if self.ships[size - 1] >= 5 - size:
             Board.debug_action_checks(
@@ -819,7 +743,9 @@ class Board:
         return False
 
     @staticmethod
-    def debug_action_checks(r: int, c: int, size: int, direction: bool, text: str):
+    def debug_action_checks(
+        r: np.byte, c: np.byte, size: int, direction: bool, text: str
+    ):
         """Debugging do método actions()"""
         if DEBUG_LEVEL == D_VERBOSE:
             print("Action", r, c, size, direction, text, sep="\t")
@@ -943,17 +869,8 @@ class Bimaru(Problem):
         new_board = Board(
             np.array(state.board.grid, "U1"),
             np.array(state.board.ships, np.byte),
-            np.array(state.board.count_row, np.byte),
-            np.array(state.board.count_column, np.byte),
         )
         new_state = BimaruState(new_board)
-
-        # Debugging
-        if DEBUG_LEVEL >= D_MINIMUM:
-            debuf: str = ""
-            debuf += "―" * 90 + "\n"
-            debuf += f"from state {state.id} with {action}\n"
-
         row = action[A_ROW]
         col = action[A_COL]
         ship_size = action[A_SIZE]
@@ -974,18 +891,16 @@ class Bimaru(Problem):
                     row + i * (1 - direction), col + i * direction, "m"
                 )
 
-        new_state.board.ships[ship_size - 1] += 1
-        new_state.board.inferences()  # Infere
+        # Infere até não haver mais alterações por inferência
+        while True:
+            previous_board = Board(
+                np.array(new_state.board.grid, "U1"),
+                np.array(new_state.board.ships, np.byte),
+            )
+            new_state.board.inferences()
+            if new_state.board == previous_board:
+                break
         new_state.board.ship_count()  # Reconta os navios
-
-        # Debugging
-        if DEBUG_LEVEL >= D_MINIMUM:
-            debuf += f"to state {new_state.id} :\n"
-            debuf += new_state.board.print_debug()
-            debuf += "ships : " + str(new_state.board.ships) + "\n"
-            actions = self.actions(new_state)
-            debuf += "actions: " + str(actions) + "\n"
-            print(debuf)
 
         return new_state
 
@@ -1000,44 +915,25 @@ class Bimaru(Problem):
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
-        return float(node.state.board.empty_cells()) / 2
-
-    def debug_loop(self):
-        """Função estritamente para debugging,
-        ações escolhidas manualmente"""
-        action = ()
-        new_state = self.initial
-        while 1:
-            action = stdin.readline().rstrip("\n").split(" ")[0:]
-            for i in range(4):
-                action[i] = int(action[i])
-            print(action)
-            new_state = self.result(new_state, action)
-            print(new_state.board.valid_board())
 
 
 def main():
+    # Interpreta a instância inicial a partir do stdin
     initial_board = Board.parse_instance()
+    # Cria o problema a partir do tabuleiro inicial
     bimaru = Bimaru(initial_board)
-    if DEBUG_LEVEL >= D_MINIMUM:
-        print("")
-        print(bimaru.initial.board.ships)
-        print("")
-        print(bimaru.actions(bimaru.initial))
 
+    # Realiza a procura
     goal_node = depth_first_graph_search(bimaru)
-
-    # bimaru.debug_loop()
 
     if goal_node is None:
         print("No final state.")
         return
+    # Preenche os espaços vazios do tabuleiro final com água
     goal_node.state.board.water_all_empty()
-    if DEBUG_LEVEL >= D_MINIMUM:
-        print("\t\t\t\t\tFINAL STATE", sep="")
-        print(goal_node.state.board.print_debug())
-    else:
-        goal_node.state.board.print()
+
+    # Imprime o tabuleiro final
+    goal_node.state.board.print()
 
 
 if __name__ == "__main__":
