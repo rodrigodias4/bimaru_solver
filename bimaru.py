@@ -156,9 +156,11 @@ class Board:
             self.water_if_empty(r - 1, c)
             self.water_if_empty(r + 1, c)
 
-        if (self.ship_cells_in_row(r) + 2 - (right == "r") - (left == "l")) == self.count_row[
-            r
-        ] and (self.is_water_or_oob(r - 1, c) or self.is_water_or_oob(r + 1, c)):
+        if (
+            self.ship_cells_in_row(r) + 2 - (right == "r") - (left == "l")
+        ) == self.count_row[r] and (
+            self.is_water_or_oob(r - 1, c) or self.is_water_or_oob(r + 1, c)
+        ):
             #   .                        .
             # []M[] (2 left on row) ->  lMr
             #   .                        .
@@ -904,15 +906,8 @@ class Bimaru(Problem):
                     row + i * (1 - direction), col + i * direction, "m"
                 )
 
-        # Infere até não haver mais alterações por inferência
-        while True:
-            previous_board = Board(
-                np.array(new_state.board.grid, "U1"),
-                np.array(new_state.board.ships, np.byte),
-            )
-            new_state.board.inferences()
-            if new_state.board == previous_board:
-                break
+        new_state.board.inferences_water_full_lines()  # Água em linhas cheias
+        new_state.board.water_adjacences()  # Água ao redor dos navios
         new_state.board.ship_count()  # Reconta os navios
 
         return new_state
