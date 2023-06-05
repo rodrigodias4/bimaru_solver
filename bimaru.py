@@ -156,7 +156,22 @@ class Board:
             self.water_if_empty(r - 1, c)
             self.water_if_empty(r + 1, c)
 
-        elif self.ship_cells_in_row(r) + 1 == self.count_row[r]:
+        if (self.ship_cells_in_row(r) + 2 - (right == "r") - (left == "l")) == self.count_row[
+            r
+        ] and (self.is_water_or_oob(r - 1, c) or self.is_water_or_oob(r + 1, c)):
+            #   .                        .
+            # []M[] (2 left on row) ->  lMr
+            #   .                        .
+            self.set_if_empty(r, c - 1, "l")
+            self.set_if_empty(r, c + 1, "r")
+        elif self.ship_cells_in_column(c) + 2 == self.count_row[c] and (
+            self.is_water_or_oob(r, c - 1) or self.is_water_or_oob(r, c + 1)
+        ):
+            # Perpendicular ao anterior
+            self.set_if_empty(r - 1, c, "t")
+            self.set_if_empty(r + 1, c, "b")
+
+        if self.ship_cells_in_row(r) + 1 == self.count_row[r]:
             if left == "l" and self.get_value(r, c + 2).lower() != "r":
                 # LM[] -> LMr, caso falte apenas uma célula preenchida
                 # para o número de ajudas e não tenhamos LM[]R
@@ -238,10 +253,8 @@ class Board:
             # CONTRATORPEDEIRO (2 CELULAS) | L[]. -> Lr.
             self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, op)
         elif (
-            self.ship_cells_in_column(c) * (1 - d) * s
-            + self.ship_cells_in_row(r) * d * s
-            + 1
-            == self.count_column[c] * (1 - d) * s + self.count_row[r] * d * s
+            self.ship_cells_in_column(c) * (1 - d) + self.ship_cells_in_row(r) * d + 1
+            == self.count_column[c] * (1 - d) + self.count_row[r] * d
         ) and not self.ship_in_cell(r + 2 * (1 - d) * s, c + 2 * d * s):
             # CONTRATORPEDEIRO (2 CELULAS) | L[] (1 left on row) -> Lr
             self.set_if_empty(r + 1 * (1 - d) * s, c + 1 * d * s, op)
@@ -916,10 +929,27 @@ class Bimaru(Problem):
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
 
+    def debug_loop(self):
+        """Função estritamente para debugging,
+        ações escolhidas manualmente"""
+        action = ()
+        new_state = self.initial
+        print(new_state.board.print_debug())
+        print(self.actions(new_state))
+        while 1:
+            action = stdin.readline().rstrip("\n").split(" ")[0:]
+            for i in range(4):
+                action[i] = int(action[i])
+            print(action)
+            new_state = self.result(new_state, action)
+            print(new_state.board.print_debug())
+            print(self.actions(new_state))
+
 
 def main():
     # Interpreta a instância inicial a partir do stdin
     initial_board = Board.parse_instance()
+
     # Cria o problema a partir do tabuleiro inicial
     bimaru = Bimaru(initial_board)
 
