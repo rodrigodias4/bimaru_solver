@@ -76,25 +76,25 @@ Exemplo
 
 O ficheiro de input que descreve a instância da Figura 1 é o seguinte:
 
-ROW 2 3 2 2 3 0 1 3 2 2
-COLUMN 6 0 1 0 2 1 3 1 2 4
-6
-HINT 0 0 T
-HINT 1 6 M
-HINT 3 2 C
-HINT 6 0 W
-HINT 8 8 B
-HINT 9 5 C
+ROW 2 3 2 2 3 0 1 3 2 2  
+COLUMN 6 0 1 0 2 1 3 1 2 4  
+6  
+HINT 0 0 T  
+HINT 1 6 M  
+HINT 3 2 C  
+HINT 6 0 W  
+HINT 8 8 B  
+HINT 9 5 C  
 
-ROW\t2\t3\t2\t2\t3\t0\t1\t3\t2\t2\n
-COLUMN\t6\t0\t1\t0\t2\t1\t3\t1\t2\t4\n
-6\n
-HINT\t0\t0\tT\n
-HINT\t1\t6\tM\n
-HINT\t3\t2\tC\n
-HINT\t6\t0\tW\n
-HINT\t8\t8\tB\n
-HINT\t9\t5\tC\n
+ROW\t2\t3\t2\t2\t3\t0\t1\t3\t2\t2\n  
+COLUMN\t6\t0\t1\t0\t2\t1\t3\t1\t2\t4\n  
+6\n  
+HINT\t0\t0\tT\n  
+HINT\t1\t6\tM\n  
+HINT\t3\t2\tC\n  
+HINT\t6\t0\tW\n  
+HINT\t8\t8\tB\n  
+HINT\t9\t5\tC\n  
 
 ### 4.2 Formato do output
 
@@ -114,24 +114,24 @@ Exemplo
 
 O output que descreve a solução da Figura 2 é:
 
-T.....t...
-b.....M..t
-......b..m
-..C......m
-c......c.b
-..........
-W...t.....
-t...b...t.
-m.......B.
-b....C....
-
-T.....t...\n
-b.....M..t\n
-......b..m\n
-..C......m\n
-c......c.b\n
-..........\n
-W...t.....\n
-t...b...t.\n
-m.......B.\n
-b....C....\n
+T.....t...  
+b.....M..t  
+......b..m  
+..C......m  
+c......c.b  
+..........  
+W...t.....  
+t...b...t.  
+m.......B.  
+b....C....  
+  
+T.....t...\n  
+b.....M..t\n  
+......b..m\n  
+..C......m\n  
+c......c.b\n  
+..........\n  
+W...t.....\n  
+t...b...t.\n  
+m.......B.\n  
+b....C....\n  
