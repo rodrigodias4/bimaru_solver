@@ -159,15 +159,26 @@ class Board:
         if (
             self.ship_cells_in_row(r) + 2 - (right == "r") - (left == "l")
         ) == self.count_row[r] and (
-            self.is_water_or_oob(r - 1, c) or self.is_water_or_oob(r + 1, c)
+            (self.is_water_or_oob(r - 1, c) or self.is_water_or_oob(r + 1, c))
+            and not (
+                self.get_value(r, c - 2).lower() == "l"
+                or self.get_value(r, c + 2).lower() == "r"
+            )
         ):
             #   .                        .
             # []M[] (2 left on row) ->  lMr
             #   .                        .
             self.set_if_empty(r, c - 1, "l")
             self.set_if_empty(r, c + 1, "r")
-        elif self.ship_cells_in_column(c) + 2 == self.count_row[c] and (
-            self.is_water_or_oob(r, c - 1) or self.is_water_or_oob(r, c + 1)
+        elif (
+            self.ship_cells_in_column(c) + 2 - (above == "t") - (below == "b")
+        ) == self.count_row[c] and (
+            self.is_water_or_oob(r, c - 1)
+            or self.is_water_or_oob(r, c + 1)
+            and not (
+                self.get_value(r - 2, c).lower() == "t"
+                or self.get_value(r + 2, c).lower() == "b"
+            )
         ):
             # Perpendicular ao anterior
             self.set_if_empty(r - 1, c, "t")
@@ -891,6 +902,11 @@ class Bimaru(Problem):
         ship_size = action[A_SIZE]
         direction = action[A_DIR]
 
+        if DEBUG_LEVEL >= D_MINIMUM:
+            debuf: str = ""
+            debuf += "―" * 90 + "\n"
+            debuf += f"from state {state.id} with {action}\n"
+
         # Insere o navio
         if ship_size == 1:
             new_state.board.grid[row, col] = "c"
@@ -909,6 +925,15 @@ class Bimaru(Problem):
         new_state.board.inferences_water_full_lines()  # Água em linhas cheias
         new_state.board.water_adjacences()  # Água ao redor dos navios
         new_state.board.ship_count()  # Reconta os navios
+
+        # Debugging
+        if DEBUG_LEVEL >= D_MINIMUM:
+            debuf += f"to state {new_state.id} :\n"
+            debuf += new_state.board.print_debug()
+            debuf += "ships : " + str(new_state.board.ships) + "\n"
+            actions = self.actions(new_state)
+            debuf += "actions: " + str(actions) + "\n"
+            print(debuf)
 
         return new_state
 
